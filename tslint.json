@@ -1,0 +1,26 @@
+{
+  "defaultSeverity": "error",
+  "extends": ["tslint:recommended", "tslint-config-prettier"],
+  "linterOptions": {
+    "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/devTools/*"]
+  },
+  "rules": {
+    "max-line-length": [true, { "limit": 100, "ignore-pattern": "^import {(.*?)}" }],
+    "new-parens": true,
+    "ordered-imports": false,
+    "only-arrow-functions": [true, "allow-named-functions"],
+    "semicolon": [true, "always", "ignore-bound-class-methods"],
+    "no-unused-expression": [true, "allow-tagged-template"],
+    "no-var-requires": false,
+    "no-magic-numbers": false,
+    "prefer-const": true,
+    "no-string-literal": false,
+    "no-empty": false,
+    "no-console": false
+  },
+  "jsRules": {
+    "max-line-length": {
+      "options": [100]
+    }
+  }
+}
