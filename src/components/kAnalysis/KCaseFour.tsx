@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { Box, TextField, Button, Select, MenuItem } from '@mui/material';
 import { useDataContext } from '../../context/DataContext';
-import getAllPrice from '../../utils/fetch/getAllPrice';
 import getKLineData from '../../utils/fetch/getKLineData';
 import { CardData } from '../Card';
 
 type Interval = '1m' | '3m' | '5m' | '15m';
 
 interface FilterType {
-  interval: Interval; // k线时间间隔
-  count: string; // 用来做分析的k线数量，与trend联合， 在k线query里是limit = count + 1
+  interval: Interval;
+  count: string;
 }
 
 interface KCaseFourProps {

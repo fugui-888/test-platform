@@ -19,7 +19,7 @@ export default function KAnalysisPage() {
       <KCaseTwo onButtonClick={onButtonClick} />
       {/* <KCaseThree onButtonClick={onButtonClick} /> */}
       <KCaseFour onButtonClick={onButtonClick} />
-      <KCaseFive onButtonClick={onButtonClick} />
+      {/* <KCaseFive onButtonClick={onButtonClick} /> */}
 
       <Box sx={{ marginTop: '20px' }}>
         <Card title="" bgColor="#37B5B6" data={filteredList} noActionButtons />

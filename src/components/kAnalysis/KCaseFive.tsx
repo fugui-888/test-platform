@@ -106,9 +106,7 @@ export default function KCaseFive(props: KCaseFiveProps) {
         const klines = value.klines || [];
         const length = klines.length;
         const latest = klines[length - 1];
-        // const last = klines[0];
 
-        // const open = Number(last[1]);
         const close = Number(latest[4]);
 
         let lowest = 0;

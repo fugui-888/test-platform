@@ -21,8 +21,8 @@ type Interval =
   | '1w';
 
 interface FilterType {
-  interval: Interval; // k线时间间隔
-  count: string; // 用来做分析的k线数量，与trend联合， 在k线query里是limit = count + 1
+  interval: Interval;
+  count: string;
 }
 
 interface KCaseOneProps {
