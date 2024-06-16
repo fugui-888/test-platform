@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Box, Button, Tab, Tabs } from '@mui/material';
-import { useDataContext } from '../context/DataContext';
 import getAllPrice from '../utils/fetch/getAllPrice';
 import getKLineData from '../utils/fetch/getKLineData';
 import VolumePage from '../components/volume/VolumePage';
@@ -38,7 +37,6 @@ const getPriceChange = (open: number, latest: number) => {
 };
 
 export default function Analysis() {
-  const { allKlineData, setAllKlineData } = useDataContext();
   const [value, setValue] = useState(0);
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -85,16 +83,13 @@ export default function Analysis() {
     return all;
   };
 
-  const onPrepare = async () => {
-    const allKLine = await getListForAll();
-    setAllKlineData(allKLine);
-  };
+  // const onPrepare = async () => {
+  //   const allKLine = await getListForAll();
+  //   setAllKlineData(allKLine);
+  // };
 
   return (
     <Box sx={{ marginTop: '20px' }}>
-      <Button onClick={onPrepare} disabled={!!Object.keys(allKlineData).length}>
-        Prepare K
-      </Button>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={value} onChange={handleChange}>
           <Tab label="Day" />
