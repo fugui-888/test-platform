@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import KCaseOne from './KCaseOne';
 import KCaseTwo from './KCaseTwo';
 import KCaseFour from './KCaseFour';
-import KCaseFive from './KCaseFive';
+import KTradeCount from './KTradeCount';
 import Card, { CardData } from '../Card';
 
 export default function KAnalysisPage() {
@@ -16,6 +16,7 @@ export default function KAnalysisPage() {
   return (
     <Box sx={{ marginTop: '20px' }}>
       <KCaseOne onButtonClick={onButtonClick} />
+      <KTradeCount onButtonClick={onButtonClick} />
       <KCaseTwo onButtonClick={onButtonClick} />
       {/* <KCaseThree onButtonClick={onButtonClick} /> */}
       <KCaseFour onButtonClick={onButtonClick} />

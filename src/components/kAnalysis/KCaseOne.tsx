@@ -132,7 +132,7 @@ export default function KCaseOne(props: KCaseOneProps) {
   };
 
   return (
-    <Box sx={{ marginTop: '20px' }}>
+    <Box sx={{ marginTop: '20px', marginBottom: '20px' }}>
       <Box sx={{ marginBottom: '5px', display: 'flex', alignItems: 'center' }}>
         <Select
           id="interval-select"
