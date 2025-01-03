@@ -17,7 +17,7 @@ const defaultOptions: any = {
       formatter: (v: string) => moment(v).local().format('HH:mm'),
       rotate: 0,
     },
-    tickAmount: 10,
+    tickAmount: 5,
     axisTicks: {
       show: false,
     },
@@ -75,7 +75,7 @@ export default function KlineChart(props: KlineChartProps) {
     min: 0,
     max: 0,
   });
-  console.log('klineData', klineData);
+
   useEffect(() => {
     const updatedChartData = klineData.map((k) => ({
       x: new Date(k[0]),

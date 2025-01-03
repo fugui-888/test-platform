@@ -283,12 +283,12 @@ export default function KFilter() {
         <Box>
           <Box
             sx={{
-              background: '#43766C',
+              background: '#A888B5',
               padding: '8px',
               paddingBottom: '2px',
               borderRadius: '8px',
-              height: '400px',
-              maxHeight: '400px',
+              height: '350px',
+              maxHeight: '350px',
               overflow: 'auto',
             }}
           >
@@ -327,7 +327,7 @@ export default function KFilter() {
       <Box
         sx={{
           background: 'white',
-          padding: '4px 8px',
+          padding: '4px 0px',
           borderRadius: '8px',
           marginTop: '16px',
         }}
