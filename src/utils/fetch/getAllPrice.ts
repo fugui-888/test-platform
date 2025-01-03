@@ -11,7 +11,7 @@ const getAllPrice = async () => {
     `https://fapi.binance.com/fapi/v1/ticker/price`,
   );
 
-  return data as TickerPrice[];
+  return (data as TickerPrice[]).filter((d) => d.symbol.slice(-4) === 'USDT');
 };
 
 export default getAllPrice;
