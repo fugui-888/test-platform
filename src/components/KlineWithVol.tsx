@@ -14,7 +14,7 @@ const defaultOptions: any = {
   xaxis: {
     type: 'datetime',
     labels: {
-      formatter: (v: string) => moment(v).local().format('HH:mm'),
+      formatter: (v: string) => moment(v).local().format('MM-DD'),
       rotate: 0,
     },
     tickAmount: 5,

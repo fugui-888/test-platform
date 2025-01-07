@@ -3,6 +3,7 @@ import { Box, Tab, Tabs } from '@mui/material';
 import DayPage from '../components/day/DayPage';
 import PickPage from '../components/pick/PickPage';
 import KAnalysisPage from '../components/kAnalysis/KAnalysisPage';
+import TopListPage from '../components/toplist/TopListPage';
 
 export interface KlineData {
   symbol: string;
@@ -41,13 +42,15 @@ export default function Analysis() {
         <Tabs value={value} onChange={handleChange}>
           <Tab label="Day" />
           <Tab label="K" />
+          <Tab label="T" />
           <Tab label="Pick" />
         </Tabs>
       </Box>
       <Box>
         {value === 0 && <DayPage />}
         {value === 1 && <KAnalysisPage />}
-        {value === 2 && <PickPage />}
+        {value === 2 && <TopListPage />}
+        {value === 3 && <PickPage />}
       </Box>
     </Box>
   );

@@ -10,7 +10,7 @@ import {
 import getAllPrice from '../../utils/fetch/getAllPrice';
 import getKLineData from '../../utils/fetch/getKLineData';
 import { CardData } from '../Card';
-import KlineWithVol from './KlineWithVol';
+import KlineWithVol from '../KlineWithVol';
 
 type Interval =
   | '1m'
