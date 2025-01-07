@@ -50,6 +50,38 @@ interface SymbolList {
   continueUpCount?: number;
 }
 
+const findLastLocalLowest = (
+  klines: string[][],
+): { low: number; index: number } => {
+  if (klines.length < 4) return { low: 0, index: -1 };
+
+  for (let i = klines.length - 2; i >= 3; i--) {
+    const currentLow = parseFloat(klines[i][3]);
+
+    let isLocalLowest = true;
+
+    for (let j = i - 3; j < i; j++) {
+      if (klines[j] && parseFloat(klines[j][3]) <= currentLow) {
+        isLocalLowest = false;
+        break;
+      }
+    }
+
+    for (let j = i + 1; j < klines.length; j++) {
+      if (parseFloat(klines[j][3]) < currentLow) {
+        isLocalLowest = false;
+        break;
+      }
+    }
+
+    if (isLocalLowest) {
+      return { low: currentLow, index: i };
+    }
+  }
+
+  return { low: 0, index: -1 };
+};
+
 export default function KFilter() {
   const [filter, setFilter] = useState<FilterType>(defaultFilter);
   const getData = getKLineData;
@@ -165,6 +197,49 @@ export default function KFilter() {
     return all;
   };
 
+  const getListForUp = async () => {
+    const allTicks = await getAllPrice();
+    let all: SymbolList[] = [];
+
+    await Promise.all(
+      allTicks.map((item) =>
+        getData({
+          symbol: item.symbol,
+          interval: filter.interval,
+          limit: '99',
+        }),
+      ),
+    ).then((values) => {
+      values.forEach((value) => {
+        const klines = value.klines || [];
+        const length = klines.length;
+        if (length === 0) return;
+
+        const latest = klines[length - 1];
+        const lowPoint = findLastLocalLowest(klines);
+
+        if (lowPoint.index !== -1) {
+          const low = klines[lowPoint.index][3];
+          const close = latest[4];
+          const generalPriceChange =
+            (Number(close) - Number(low)) / Number(low);
+
+          const upKLineCount = length - lowPoint.index;
+
+          all.push({
+            symbol: value.symbol,
+            generalPriceChange,
+            totalTrades: 0,
+            price: close,
+            continueUpCount: upKLineCount,
+          });
+        }
+      });
+    });
+
+    return all;
+  };
+
   const sortByIncrease = async () => {
     const allChangeList = await getListForAll();
     allChangeList.sort((a, b) => b.generalPriceChange - a.generalPriceChange);
@@ -202,6 +277,19 @@ export default function KFilter() {
     setCardData(formattedContinueUp);
   };
 
+  const sortByUp = async () => {
+    const allChangeList = await getListForUp();
+    allChangeList.sort((a, b) => b.generalPriceChange - a.generalPriceChange);
+
+    const formattedData = allChangeList.map((tick) => ({
+      detail: `(up${tick.continueUpCount}) - ${tick.symbol} - ($${
+        tick.price
+      }) // ${(tick.generalPriceChange * 100).toFixed(2)}%`,
+      symbol: tick.symbol,
+    }));
+    setCardData(formattedData);
+  };
+
   const onSymbolClick = async (symbol: string) => {
     const res = await getKLineData({
       symbol: symbol,
@@ -221,7 +309,7 @@ export default function KFilter() {
           value={filter.interval}
           label="Interval"
           onChange={(event) => onFilterChange(event.target.value, 'interval')}
-          sx={{ marginRight: '5px' }}
+          sx={{ marginRight: '1px' }}
         >
           {[
             '1m',
@@ -250,14 +338,14 @@ export default function KFilter() {
           variant="outlined"
           value={filter.count}
           onChange={(e) => onFilterChange(e.target.value, 'count')}
-          sx={{ width: '70px', marginRight: '5px' }}
+          sx={{ width: '70px', marginRight: '1px' }}
         />
 
         <Button
           onClick={sortByIncrease}
           variant="outlined"
           disabled={Number(filter.count) < 2}
-          sx={{ marginRight: '5px' }}
+          sx={{ marginRight: '1px' }}
         >
           涨幅
         </Button>
@@ -266,17 +354,26 @@ export default function KFilter() {
           onClick={sortByTrades}
           variant="outlined"
           disabled={Number(filter.count) < 2}
-          sx={{ marginRight: '5px' }}
+          sx={{ marginRight: '1px' }}
         >
-          trades
+          ts
         </Button>
 
         <Button
           onClick={sortByContinueUp}
           variant="outlined"
-          sx={{ marginRight: '5px' }}
+          sx={{ marginRight: '1px' }}
         >
           连涨
+        </Button>
+
+        <Button
+          onClick={sortByUp}
+          variant="outlined"
+          disabled={Number(filter.count) < 2}
+          sx={{ marginRight: '1px' }}
+        >
+          升
         </Button>
       </Box>
       <Box marginTop="16px">
