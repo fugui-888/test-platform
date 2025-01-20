@@ -6,7 +6,10 @@ import {
   Select,
   MenuItem,
   Typography,
+  IconButton,
 } from '@mui/material';
+import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp';
+import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown';
 import getAllPrice from '../../utils/fetch/getAllPrice';
 import getKLineData from '../../utils/fetch/getKLineData';
 import { CardData } from '../Card';
@@ -86,6 +89,8 @@ export default function KFilter() {
   const [filter, setFilter] = useState<FilterType>(defaultFilter);
   const getData = getKLineData;
   const [cardData, setCardData] = useState<CardData[]>([]);
+  const [isNextDisabled, setIsNextDisabled] = useState(false);
+  const [isBeforeDisabled, setIsBeforeDisabled] = useState(false);
   const [viewingData, setViewingData] = useState<{
     symbol: string;
     klines: string[][];
@@ -297,7 +302,40 @@ export default function KFilter() {
       limit: filter.kCount,
     });
 
+    const currentIndex = cardData.findIndex((item) => item.symbol === symbol);
+    setIsNextDisabled(currentIndex === cardData.length - 1);
+    setIsBeforeDisabled(currentIndex === 0);
+
     setViewingData({ symbol, klines: res.klines });
+  };
+
+  const next = () => {
+    const currentIndex = cardData.findIndex(
+      (item) => item.symbol === viewingData.symbol,
+    );
+    const nextIndex = currentIndex === -1 ? 0 : currentIndex + 1;
+
+    if (nextIndex < cardData.length) {
+      const nextSymbol = cardData[nextIndex].symbol;
+      onSymbolClick(nextSymbol);
+      setIsNextDisabled(nextIndex === cardData.length - 1);
+      setIsBeforeDisabled(false);
+    }
+  };
+
+  const before = () => {
+    const currentIndex = cardData.findIndex(
+      (item) => item.symbol === viewingData.symbol,
+    );
+    const prevIndex =
+      currentIndex === -1 ? cardData.length - 1 : currentIndex - 1;
+
+    if (prevIndex >= 0) {
+      const prevSymbol = cardData[prevIndex].symbol;
+      onSymbolClick(prevSymbol);
+      setIsBeforeDisabled(prevIndex === 0);
+      setIsNextDisabled(false);
+    }
   };
 
   return (
@@ -344,7 +382,7 @@ export default function KFilter() {
         <Button
           onClick={sortByIncrease}
           variant="outlined"
-          disabled={Number(filter.count) < 2}
+          disabled={Number(filter.count) < 1}
           sx={{ marginRight: '1px' }}
         >
           涨幅
@@ -353,7 +391,7 @@ export default function KFilter() {
         <Button
           onClick={sortByTrades}
           variant="outlined"
-          disabled={Number(filter.count) < 2}
+          disabled={Number(filter.count) < 1}
           sx={{ marginRight: '1px' }}
         >
           ts
@@ -370,7 +408,6 @@ export default function KFilter() {
         <Button
           onClick={sortByUp}
           variant="outlined"
-          disabled={Number(filter.count) < 2}
           sx={{ marginRight: '1px' }}
         >
           升
@@ -429,46 +466,68 @@ export default function KFilter() {
           marginTop: '16px',
         }}
       >
-        <Box>
-          <Select
-            id="k-line-interval-select"
-            size="small"
-            value={filter.kInterval}
-            label="kInterval"
-            onChange={(event) =>
-              onFilterChange(event.target.value, 'kInterval')
-            }
-            sx={{ marginRight: '5px' }}
-          >
-            {[
-              '1m',
-              '3m',
-              '5m',
-              '15m',
-              '30m',
-              '1h',
-              '2h',
-              '4h',
-              '6h',
-              '8h',
-              '12h',
-              '1d',
-              '3d',
-              '1w',
-            ].map((i) => (
-              <MenuItem value={i} key={i}>
-                {i}
-              </MenuItem>
-            ))}
-          </Select>
-          <TextField
-            label="kCount"
-            size="small"
-            variant="outlined"
-            value={filter.kCount}
-            onChange={(event) => onFilterChange(event.target.value, 'kCount')}
-          />
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Select
+              id="k-line-interval-select"
+              size="small"
+              value={filter.kInterval}
+              label="kInterval"
+              onChange={(event) =>
+                onFilterChange(event.target.value, 'kInterval')
+              }
+              sx={{ marginRight: '5px' }}
+            >
+              {[
+                '1m',
+                '3m',
+                '5m',
+                '15m',
+                '30m',
+                '1h',
+                '2h',
+                '4h',
+                '6h',
+                '8h',
+                '12h',
+                '1d',
+                '3d',
+                '1w',
+              ].map((i) => (
+                <MenuItem value={i} key={i}>
+                  {i}
+                </MenuItem>
+              ))}
+            </Select>
+            <TextField
+              label="kCount"
+              size="small"
+              variant="outlined"
+              value={filter.kCount}
+              onChange={(event) => onFilterChange(event.target.value, 'kCount')}
+              sx={{ marginRight: '5px', width: '70px' }}
+            />
+          </Box>
+          <Box>
+            <IconButton
+              onClick={() => before()}
+              disabled={isBeforeDisabled || cardData.length === 0}
+              sx={{ padding: '2px', paddingRight: '16px' }}
+            >
+              <ArrowCircleUpIcon sx={{ fontSize: '40px' }} />
+            </IconButton>
+            <IconButton
+              onClick={() => next()}
+              disabled={isNextDisabled || cardData.length === 0}
+              sx={{ padding: '2px' }}
+            >
+              <ArrowCircleDownIcon sx={{ fontSize: '40px' }} />
+            </IconButton>
+          </Box>
         </Box>
+        <Typography sx={{ marginBottom: '-16px' }}>
+          {viewingData.symbol}
+        </Typography>
         {viewingData.klines.length > 0 && (
           <KlineWithVol klineData={viewingData.klines} />
         )}
