@@ -271,7 +271,12 @@ export default function KFilter() {
 
   const sortByContinueUp = async () => {
     const allChangeList = await getListForContinueUp();
-    allChangeList.sort((a, b) => b.continueUpCount! - a.continueUpCount!);
+    allChangeList.sort((a, b) => {
+      if (b.continueUpCount! !== a.continueUpCount!) {
+        return b.continueUpCount! - a.continueUpCount!;
+      }
+      return b.generalPriceChange - a.generalPriceChange;
+    });
 
     const formattedContinueUp = allChangeList.map((tick) => ({
       detail: `(up${tick.continueUpCount}) - ${tick.symbol} - ($${
