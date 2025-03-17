@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Tab, Tabs } from '@mui/material';
-import PickPage from '../components/pick/PickPage';
+import EventPage from '../components/event/eventPage';
 import KAnalysisPage from '../components/kAnalysis/KAnalysisPage';
 import AllK from '../components/all/AllK';
 import TopListPage from '../components/toplist/TopListPage';
@@ -43,14 +43,14 @@ export default function Analysis() {
           <Tab label="K" />
           <Tab label="ALL" />
           <Tab label="T" />
-          <Tab label="Pick" />
+          <Tab label="EVENT!" />
         </Tabs>
       </Box>
       <Box>
         {value === 0 && <KAnalysisPage />}
         {value === 1 && <AllK />}
         {value === 2 && <TopListPage />}
-        {value === 3 && <PickPage />}
+        {value === 3 && <EventPage />}
       </Box>
     </Box>
   );
