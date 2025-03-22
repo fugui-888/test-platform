@@ -104,7 +104,7 @@ export default function BTC(props: BTCProps) {
         {fiveMinData.length > 0 && (
           <>
             <Box position={'absolute'} top={36} left={0}>
-              <Typography>5 MIn Line ETH</Typography>
+              <Typography>5 MIn Line BTC</Typography>
             </Box>
             <KlineWithVol
               klineData={fiveMinData.slice(Math.floor(fiveMinData.length / 2))}
