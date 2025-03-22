@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, IconButton, CircularProgress } from '@mui/material';
+import { Box, IconButton, CircularProgress, Divider } from '@mui/material';
 import getKLineData from '../../utils/fetch/getKLineData';
 import CachedIcon from '@mui/icons-material/Cached';
 import BTC from './BTC';
@@ -57,6 +57,7 @@ export default function EventPage() {
 
       {/* K线图 */}
       <BTC fiveMinData={fiveMinData} />
+      <Divider sx={{ my: 2, backgroundColor: '#000', height: 2 }} />
       <ETH fiveMinData={ETHFiveMinData} />
     </Box>
   );

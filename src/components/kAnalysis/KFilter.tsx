@@ -442,7 +442,7 @@ export default function KFilter() {
                     marginBottom: '6px',
                     border:
                       viewingData.symbol === item.symbol
-                        ? '3px solid #E1AA8D'
+                        ? '3px solid #FFD95F'
                         : 'unset',
                   }}
                   component={'div'}

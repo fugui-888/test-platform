@@ -82,7 +82,7 @@ export default function BTC(props: BTCProps) {
         {tenMinK.length > 0 && (
           <>
             <Box position={'absolute'} top={36} left={0}>
-              <Typography>10</Typography>
+              <Typography>10 BTC</Typography>
             </Box>
             <KlineWithVol klineData={tenMinK} />
           </>
@@ -93,9 +93,22 @@ export default function BTC(props: BTCProps) {
         {tenMinKWayTwo.length > 0 && (
           <>
             <Box position={'absolute'} top={36} left={0}>
-              <Typography>5</Typography>
+              <Typography>5 BTC</Typography>
             </Box>
             <KlineWithVol klineData={tenMinKWayTwo} />
+          </>
+        )}
+      </Box>
+
+      <Box position={'relative'} marginTop={'-20px'}>
+        {fiveMinData.length > 0 && (
+          <>
+            <Box position={'absolute'} top={36} left={0}>
+              <Typography>5 MIn Line ETH</Typography>
+            </Box>
+            <KlineWithVol
+              klineData={fiveMinData.slice(Math.floor(fiveMinData.length / 2))}
+            />
           </>
         )}
       </Box>
