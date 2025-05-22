@@ -4,6 +4,7 @@ import EventPage from '../components/event/eventPage';
 import KAnalysisPage from '../components/kAnalysis/KAnalysisPage';
 import AllK from '../components/all/AllK';
 import TopListPage from '../components/toplist/TopListPage';
+import HighPage from '../components/highPoint/HighPage';
 
 export interface KlineData {
   symbol: string;
@@ -43,14 +44,15 @@ export default function Analysis() {
           <Tab label="K" />
           <Tab label="ALL" />
           <Tab label="T" />
-          <Tab label="EVENT!" />
+          {/* <Tab label="EVENT!" /> */}
+          <Tab label="H" />
         </Tabs>
       </Box>
       <Box>
         {value === 0 && <KAnalysisPage />}
         {value === 1 && <AllK />}
         {value === 2 && <TopListPage />}
-        {value === 3 && <EventPage />}
+        {value === 3 && <HighPage />}
       </Box>
     </Box>
   );

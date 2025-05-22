@@ -6941,6 +6941,11 @@ kleur@^3.0.3:
   resolved "https://registry.npmjs.org/kleur/-/kleur-3.0.3.tgz#a79c9ecc86ee1ce3fa6206d1216c501f147fc07e"
   integrity sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==
 
+klinecharts@^10.0.0-alpha5:
+  version "10.0.0-alpha5"
+  resolved "https://registry.yarnpkg.com/klinecharts/-/klinecharts-10.0.0-alpha5.tgz#0f9f0961b2e084874ae749b9a36c90c5bf2a2e16"
+  integrity sha512-lqgvwJbJ9SuZvJz+vH6cLT6jvMSB+Mtb0YZRbTQZbRa3flMOVy6ohjU128ac0MF+p/fLIP3rK/rZrcYbp4OJfw==
+
 klona@^2.0.4, klona@^2.0.5:
   version "2.0.6"
   resolved "https://registry.npmjs.org/klona/-/klona-2.0.6.tgz#85bffbf819c03b2f53270412420a4555ef882e22"
