@@ -71,19 +71,29 @@ export default function TopList() {
   const getListForAll = async () => {
     const allTicks = await getAllPrice();
     let all: { klines: string[][]; symbol: string }[] = [];
-    await Promise.all(
-      allTicks.map((item) =>
-        getData({
-          symbol: item.symbol,
-          interval: '1d',
-          limit: filter.dayCount,
-        }),
-      ),
-    ).then((values) => {
-      values.forEach((value) => {
-        all = values;
+    const chunkSize = 400;
+
+    for (let i = 0; i < allTicks.length; i += chunkSize) {
+      const chunk = allTicks.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map((item) =>
+          getData({
+            symbol: item.symbol,
+            interval: '1d',
+            limit: filter.dayCount,
+          }),
+        ),
+      ).then((values) => {
+        all = all.concat(values);
       });
-    });
+
+      if (i + chunkSize < allTicks.length) {
+        console.log(
+          `已处理批次 ${i / chunkSize + 1}，等待1分钟后继续处理下一批...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+      }
+    }
 
     return all;
   };

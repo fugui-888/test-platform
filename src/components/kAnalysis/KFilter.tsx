@@ -107,40 +107,52 @@ export default function KFilter() {
   const getListForAll = async () => {
     const allTicks = await getAllPrice();
     let all: SymbolList[] = [];
-    await Promise.all(
-      allTicks.map((item) =>
-        getData({
-          symbol: item.symbol,
-          interval: filter.interval,
-          limit: filter.count,
-        }),
-      ),
-    ).then((values) => {
-      values.forEach((value) => {
-        const klines = value.klines || [];
-        const length = klines.length;
-        const latest = klines[length - 1];
-        const last = klines[0];
+    const chunkSize = 400;
 
-        const open = Number(last[1]);
-        const close = Number(latest[4]);
+    for (let i = 0; i < allTicks.length; i += chunkSize) {
+      const chunk = allTicks.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map((item) =>
+          getData({
+            symbol: item.symbol,
+            interval: filter.interval,
+            limit: filter.count,
+          }),
+        ),
+      ).then((values) => {
+        values.forEach((value) => {
+          const klines = value.klines || [];
+          if (klines.length === 0) return;
+          const length = klines.length;
+          const latest = klines[length - 1];
+          const last = klines[0];
 
-        const generalPriceChange = (close - open) / open;
+          const open = Number(last[1]);
+          const close = Number(latest[4]);
 
-        const totalTrades = klines.reduce((acc, k) => {
-          const trade = Number(k[8]);
-          acc += trade;
-          return acc;
-        }, 0);
+          const generalPriceChange = (close - open) / open;
 
-        all.push({
-          symbol: value.symbol,
-          generalPriceChange,
-          totalTrades,
-          price: latest[4],
+          const totalTrades = klines.reduce((acc, k) => {
+            const trade = Number(k[8]);
+            acc += trade;
+            return acc;
+          }, 0);
+
+          all.push({
+            symbol: value.symbol,
+            generalPriceChange,
+            totalTrades,
+            price: latest[4],
+          });
         });
       });
-    });
+      if (i + chunkSize < allTicks.length) {
+        console.log(
+          `已处理批次 ${i / chunkSize + 1}，等待1分钟后继续处理下一批...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+      }
+    }
 
     return all;
   };
@@ -148,100 +160,119 @@ export default function KFilter() {
   const getListForContinueUp = async () => {
     const allTicks = await getAllPrice();
     let all: SymbolList[] = [];
-    await Promise.all(
-      allTicks.map((item) =>
-        getData({
-          symbol: item.symbol,
-          interval: filter.interval,
-          limit: '99',
-        }),
-      ),
-    ).then((values) => {
-      values.forEach((value) => {
-        const klines = value.klines || [];
-        const length = klines.length;
-        if (length === 0) return; // 如果没有K线数据，跳过
+    const chunkSize = 400;
 
-        const latest = klines[length - 1];
+    for (let i = 0; i < allTicks.length; i += chunkSize) {
+      const chunk = allTicks.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map((item) =>
+          getData({
+            symbol: item.symbol,
+            interval: filter.interval,
+            limit: '99',
+          }),
+        ),
+      ).then((values) => {
+        values.forEach((value) => {
+          const klines = value.klines || [];
+          const length = klines.length;
+          if (length === 0) return; // 如果没有K线数据，跳过
 
-        let continueUpCount = 0;
-        let startPrice = 0; // 连续上涨期间的起始价格
-        let endPrice = 0; // 连续上涨期间的结束价格
+          const latest = klines[length - 1];
 
-        // 从最后一根 K 线开始，计算连续上涨的数量
-        for (let i = length - 1; i >= 0; i--) {
-          const current = klines[i];
-          const openPrice = Number(current[1]);
-          const closePrice = Number(current[4]);
+          let continueUpCount = 0;
+          let startPrice = 0; // 连续上涨期间的起始价格
+          let endPrice = 0; // 连续上涨期间的结束价格
 
-          if (closePrice > openPrice) {
-            continueUpCount++;
-            endPrice = endPrice || closePrice; // 第一次上涨时记录结束价
-            startPrice = openPrice; // 更新起始价格
-          } else {
-            break; // 遇到非上涨K线，停止计数
+          // 从最后一根 K 线开始，计算连续上涨的数量
+          for (let i = length - 1; i >= 0; i--) {
+            const current = klines[i];
+            const openPrice = Number(current[1]);
+            const closePrice = Number(current[4]);
+
+            if (closePrice > openPrice) {
+              continueUpCount++;
+              endPrice = endPrice || closePrice; // 第一次上涨时记录结束价
+              startPrice = openPrice; // 更新起始价格
+            } else {
+              break; // 遇到非上涨K线，停止计数
+            }
           }
-        }
 
-        // 如果没有连续上涨，跳过该交易对
-        if (continueUpCount === 0) return;
+          // 如果没有连续上涨，跳过该交易对
+          if (continueUpCount === 0) return;
 
-        // 计算连续上涨期间的涨幅
-        const continuousPriceChange = (endPrice - startPrice) / startPrice;
+          // 计算连续上涨期间的涨幅
+          const continuousPriceChange = (endPrice - startPrice) / startPrice;
 
-        all.push({
-          symbol: value.symbol,
-          generalPriceChange: continuousPriceChange, // 连续上涨期间的涨幅
-          totalTrades: 0,
-          price: latest[4], // 最新价
-          continueUpCount, // 连续上涨K线数量
+          all.push({
+            symbol: value.symbol,
+            generalPriceChange: continuousPriceChange, // 连续上涨期间的涨幅
+            totalTrades: 0,
+            price: latest[4], // 最新价
+            continueUpCount, // 连续上涨K线数量
+          });
         });
       });
-    });
-
+      if (i + chunkSize < allTicks.length) {
+        console.log(
+          `已处理批次 ${i / chunkSize + 1}，等待1分钟后继续处理下一批...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+      }
+    }
     return all;
   };
 
   const getListForUp = async () => {
     const allTicks = await getAllPrice();
     let all: SymbolList[] = [];
+    const chunkSize = 400;
 
-    await Promise.all(
-      allTicks.map((item) =>
-        getData({
-          symbol: item.symbol,
-          interval: filter.interval,
-          limit: '99',
-        }),
-      ),
-    ).then((values) => {
-      values.forEach((value) => {
-        const klines = value.klines || [];
-        const length = klines.length;
-        if (length === 0) return;
+    for (let i = 0; i < allTicks.length; i += chunkSize) {
+      const chunk = allTicks.slice(i, i + chunkSize);
+      await Promise.all(
+        chunk.map((item) =>
+          getData({
+            symbol: item.symbol,
+            interval: filter.interval,
+            limit: '99',
+          }),
+        ),
+      ).then((values) => {
+        values.forEach((value) => {
+          const klines = value.klines || [];
+          const length = klines.length;
+          if (length === 0) return;
 
-        const latest = klines[length - 1];
-        const lowPoint = findLastLocalLowest(klines);
+          const latest = klines[length - 1];
+          const lowPoint = findLastLocalLowest(klines);
 
-        if (lowPoint.index !== -1) {
-          const low = klines[lowPoint.index][3];
-          const close = latest[4];
-          const generalPriceChange =
-            (Number(close) - Number(low)) / Number(low);
+          if (lowPoint.index !== -1) {
+            const low = klines[lowPoint.index][3];
+            const close = latest[4];
+            const generalPriceChange =
+              (Number(close) - Number(low)) / Number(low);
 
-          const upKLineCount = length - lowPoint.index;
+            const upKLineCount = length - lowPoint.index;
 
-          all.push({
-            symbol: value.symbol,
-            generalPriceChange,
-            totalTrades: 0,
-            price: close,
-            continueUpCount: upKLineCount,
-          });
-        }
+            all.push({
+              symbol: value.symbol,
+              generalPriceChange,
+              totalTrades: 0,
+              price: close,
+              continueUpCount: upKLineCount,
+            });
+          }
+        });
       });
-    });
-
+      if (i + chunkSize < allTicks.length) {
+        console.log(
+          `已处理批次 ${i / chunkSize + 1}，等待1分钟后继续处理下一批...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+      }
+    }
     return all;
   };
 

@@ -15,6 +15,7 @@ import {
   Paper,
   Typography,
   ButtonGroup,
+  CircularProgress,
 } from '@mui/material';
 import { DateTime } from 'luxon';
 import getAllPrice from '../../utils/fetch/getAllPrice';
@@ -56,6 +57,7 @@ const HighPointPage: React.FC = () => {
   const [results, setResults] = useState<ResultRow[]>([]);
   const [selectedRow, setSelectedRow] = useState<ResultRow | null>(null);
   const [allKlineData, setAllKlineData] = useState<KlineData[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleFilterChange = (field: keyof Filter, value: any) => {
     setFilter((prev) => ({ ...prev, [field]: value }));
@@ -64,79 +66,99 @@ const HighPointPage: React.FC = () => {
   const getListForAll = async (): Promise<SymbolList[]> => {
     const allTicks = await getAllPrice();
     let all: SymbolList[] = [];
+    const chunkSize = 400;
 
-    await Promise.all(
-      allTicks.map((item) =>
-        getKLineData({
-          symbol: item.symbol,
-          interval: '1d',
-          limit: '888',
-        }),
-      ),
-    ).then((values) => {
-      values.forEach((value, idx) => {
-        const klines = value.klines || [];
-        const length = klines.length;
-        if (length === 0) return;
+    for (let i = 0; i < allTicks.length; i += chunkSize) {
+      const chunk = allTicks.slice(i, i + chunkSize);
 
-        const endIdx = length - 1;
-        const startIdx = Math.max(0, endIdx - filter.count + 1);
-        const slice = klines.slice(startIdx, endIdx + 1);
+      await Promise.all(
+        chunk.map((item) =>
+          getKLineData({
+            symbol: item.symbol,
+            interval: '1d',
+            limit: '888',
+          }),
+        ),
+      ).then((values) => {
+        values.forEach((value, idx) => {
+          const klines = value.klines || [];
+          const length = klines.length;
+          if (length === 0) return;
 
-        const lows = slice.map((k) => parseFloat(k[3]));
-        if (lows.length === 0) return;
+          const endIdx = length - 1;
+          const startIdx = Math.max(0, endIdx - filter.count + 1);
+          const slice = klines.slice(startIdx, endIdx + 1);
 
-        const minLow = Math.min(...lows);
-        const minLowIdx = lows.findIndex((v) => v === minLow);
-        const minLowDate = Number(klines[startIdx + minLowIdx][0]);
+          const lows = slice.map((k) => parseFloat(k[3]));
+          if (lows.length === 0) return;
 
-        const close = parseFloat(klines[endIdx][4]);
-        const ratio = close / minLow;
+          const minLow = Math.min(...lows);
+          const minLowIdx = lows.findIndex((v) => v === minLow);
+          const minLowDate = Number(klines[startIdx + minLowIdx][0]);
 
-        if (ratio >= filter.minRatio) {
-          all.push({
-            symbol: allTicks[idx].symbol,
-            sortCountPriceChange: ratio,
-            klines,
-          });
-        }
+          const close = parseFloat(klines[endIdx][4]);
+          const ratio = close / minLow;
+
+          if (ratio >= filter.minRatio) {
+            all.push({
+              symbol: chunk[idx].symbol,
+              sortCountPriceChange: ratio,
+              klines,
+            });
+          }
+        });
       });
-    });
+
+      if (i + chunkSize < allTicks.length) {
+        console.log(
+          `已处理批次 ${i / chunkSize + 1}，等待1分钟后继续处理下一批...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+      }
+    }
 
     all.sort((a, b) => b.sortCountPriceChange - a.sortCountPriceChange);
     return all;
   };
 
   const handleSearch = async () => {
-    const symbolList = await getListForAll();
+    setIsLoading(true);
+    try {
+      const symbolList = await getListForAll();
+      const newResults: ResultRow[] = symbolList.map(
+        ({ symbol, sortCountPriceChange, klines }) => {
+          const endIdx = klines.length - 1;
+          const close = parseFloat(klines[endIdx][4]);
+          const open = parseFloat(klines[endIdx][1]);
+          const lows = klines.slice(-filter.count).map((k) => parseFloat(k[3]));
+          const minLow = Math.min(...lows);
+          const minLowIdx = lows.findIndex((v) => v === minLow);
+          const minLowDate =
+            Number(klines[klines.length - filter.count + minLowIdx]?.[0]) /
+            1000;
 
-    const newResults: ResultRow[] = symbolList.map(
-      ({ symbol, sortCountPriceChange, klines }) => {
-        const endIdx = klines.length - 1;
-        const close = parseFloat(klines[endIdx][4]);
-        const open = parseFloat(klines[endIdx][1]);
-        const lows = klines.slice(-filter.count).map((k) => parseFloat(k[3]));
-        const minLow = Math.min(...lows);
-        const minLowIdx = lows.findIndex((v) => v === minLow);
-        const minLowDate =
-          Number(klines[klines.length - filter.count + minLowIdx]?.[0]) / 1000;
+          return {
+            symbol,
+            ratio: sortCountPriceChange,
+            open,
+            close,
+            minLow,
+            minLowDate,
+          };
+        },
+      );
 
-        return {
-          symbol,
-          ratio: sortCountPriceChange,
-          open,
-          close,
-          minLow,
-          minLowDate,
-        };
-      },
-    );
-
-    setResults(newResults);
-    setAllKlineData(
-      symbolList.map(({ symbol, klines }) => ({ symbol, klines })),
-    );
-    setSelectedRow(null);
+      setResults(newResults);
+      setAllKlineData(
+        symbolList.map(({ symbol, klines }) => ({ symbol, klines })),
+      );
+      setSelectedRow(null);
+    } catch (error) {
+      console.error('搜索过程中发生错误:', error);
+      // 这里可以添加一些用户友好的错误提示
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleNavigate = (direction: 'up' | 'down') => {
@@ -191,12 +213,13 @@ const HighPointPage: React.FC = () => {
               <Button variant="contained" onClick={handleSearch}>
                 搜索
               </Button>
+              {isLoading && <CircularProgress size={20} />}
             </Grid>
           </Grid>
         </CardContent>
       </Card>
       <Box sx={{ mb: 2 }}>
-        <Typography variant="h6" component="div">
+        <Typography variant="body1" component="div">
           共筛选出 {results.length} 条数据
         </Typography>
         <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
