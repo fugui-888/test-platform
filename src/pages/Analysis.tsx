@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { Box, Tab, Tabs } from '@mui/material';
-import EventPage from '../components/event/eventPage';
-import KAnalysisPage from '../components/kAnalysis/KAnalysisPage';
-import AllK from '../components/all/AllK';
-import TopListPage from '../components/toplist/TopListPage';
 import HighPage from '../components/highPoint/HighPage';
+import LoadDataPage from '../components/loadData/LoadDataPage';
 
 export interface KlineData {
   symbol: string;
@@ -38,21 +35,16 @@ export default function Analysis() {
   };
 
   return (
-    <Box sx={{ marginTop: '20px' }}>
+    <Box sx={{ marginTop: '10px' }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={value} onChange={handleChange}>
-          <Tab label="K" />
-          <Tab label="ALL" />
-          <Tab label="T" />
-          {/* <Tab label="EVENT!" /> */}
-          <Tab label="H" />
+        <Tabs value={value} onChange={handleChange} variant="fullWidth">
+          <Tab label="Data" sx={{ minHeight: '48px' }} />
+          <Tab label="High" sx={{ minHeight: '48px' }} />
         </Tabs>
       </Box>
-      <Box>
-        {value === 0 && <KAnalysisPage />}
-        {value === 1 && <AllK />}
-        {value === 2 && <TopListPage />}
-        {value === 3 && <HighPage />}
+      <Box sx={{ p: 0.5 }}>
+        {value === 0 && <LoadDataPage />}
+        {value === 1 && <HighPage />}
       </Box>
     </Box>
   );
