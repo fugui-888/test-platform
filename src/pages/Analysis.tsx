@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Box, Tab, Tabs } from '@mui/material';
 import HighPage from '../components/highPoint/HighPage';
 import LoadDataPage from '../components/loadData/LoadDataPage';
+import PumpAnalysisPage from '../components/pump/PumpAnalysisPage';
 
 export interface KlineData {
   symbol: string;
@@ -40,11 +41,13 @@ export default function Analysis() {
         <Tabs value={value} onChange={handleChange} variant="fullWidth">
           <Tab label="Data" sx={{ minHeight: '48px' }} />
           <Tab label="High" sx={{ minHeight: '48px' }} />
+          <Tab label="Pump" sx={{ minHeight: '48px' }} />
         </Tabs>
       </Box>
       <Box sx={{ p: 0.5 }}>
         {value === 0 && <LoadDataPage />}
         {value === 1 && <HighPage />}
+        {value === 2 && <PumpAnalysisPage />}
       </Box>
     </Box>
   );

@@ -73,7 +73,7 @@ const LoadDataPage: React.FC = () => {
               const res = await getKLineData({
                 symbol: item.symbol,
                 interval: interval as any,
-                limit: '500',
+                limit: '498',
               });
               if (res && res.klines && res.klines.length > 0) {
                 await saveKlineData(item.symbol, interval, res.klines);
@@ -90,7 +90,7 @@ const LoadDataPage: React.FC = () => {
         }));
 
         // 稍微停顿一下，防止请求过快
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     } catch (error) {
       console.error('加载数据失败:', error);

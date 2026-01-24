@@ -72,6 +72,39 @@ const KlineWithVolAndMA: React.FC<Props> = ({
       })),
     );
 
+    // 动态调整精度，解决小数值显示为直线的问题
+    if (klineData.length > 0) {
+      const firstPrice = klineData[0].close;
+      let precision = 2;
+      if (firstPrice < 0.00001) precision = 8;
+      else if (firstPrice < 0.0001) precision = 7;
+      else if (firstPrice < 0.001) precision = 6;
+      else if (firstPrice < 0.01) precision = 5;
+      else if (firstPrice < 0.1) precision = 4;
+      else if (firstPrice < 1) precision = 3;
+
+      chart.current.setStyles({
+        yAxis: {
+          tickText: {
+            precision: precision,
+          },
+        },
+        indicator: {
+          precision: precision,
+        },
+      });
+
+      // 覆盖主图和均线的精度配置
+      chart.current.overrideIndicator({
+        name: 'CANDLE',
+        precision: precision,
+      });
+      chart.current.overrideIndicator({
+        name: 'MA',
+        precision: precision,
+      });
+    }
+
     chart.current.removeOverlay({ id: 'selected-date-line' });
 
     if (selectedDate) {

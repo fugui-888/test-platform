@@ -53,15 +53,30 @@ const HighPointPage: React.FC = () => {
   const [selectedRow, setSelectedRow] = useState<ResultRow | null>(null);
   const [allKlineData, setAllKlineData] = useState<KlineRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [totalAvailable, setTotalAvailable] = useState<number>(0);
 
   const handleFilterChange = (field: keyof Filter, value: any) => {
     setFilter((prev) => ({ ...prev, [field]: value }));
   };
 
+  useEffect(() => {
+    const checkDataAvailability = async () => {
+      try {
+        const storedData = await getAllKlineDataByInterval(interval);
+        setTotalAvailable(storedData.length);
+      } catch (error) {
+        console.error('检查数据可用性失败:', error);
+        setTotalAvailable(0);
+      }
+    };
+    checkDataAvailability();
+  }, [interval]);
+
   const handleSearch = async () => {
     setIsLoading(true);
     try {
       const storedData = await getAllKlineDataByInterval(interval);
+      setTotalAvailable(storedData.length);
       if (storedData.length === 0) {
         setResults([]);
         setAllKlineData([]);
@@ -183,12 +198,25 @@ const HighPointPage: React.FC = () => {
               <Button
                 variant="contained"
                 onClick={handleSearch}
-                disabled={isLoading}
+                disabled={isLoading || totalAvailable === 0}
                 fullWidth
                 size="small"
               >
                 分析
               </Button>
+            </Grid>
+            <Grid item xs={12} sm="auto">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: totalAvailable > 0 ? 'success.main' : 'error.main',
+                  fontWeight: 'bold',
+                }}
+              >
+                {totalAvailable > 0
+                  ? `本地已缓存: ${totalAvailable} 个币种`
+                  : '本地无数据, 请先在加载页面加载数据'}
+              </Typography>
             </Grid>
           </Grid>
         </CardContent>
