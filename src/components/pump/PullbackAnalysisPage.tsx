@@ -21,7 +21,6 @@ import {
   MenuItem,
   Tooltip,
 } from '@mui/material';
-import { DateTime } from 'luxon';
 import { getAllKlineDataByInterval, KlineRecord } from '../../utils/db';
 import KlineWithVolAndMA from '../highPoint/KlineWithVolAndMA';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -31,23 +30,18 @@ import InfoIcon from '@mui/icons-material/Info';
 interface ResultRow {
   symbol: string;
   score: number;
+  pumpHeight: number;
+  retracement: number;
   volRatio: number;
-  priceChange: number;
-  isNewHigh: boolean;
-  vScore: number;
-  pScore: number;
-  hScore: number;
-  tScore: number;
-  offset: number;
-  timestamp: number; // 起爆点的时间戳
+  distToMA: number;
+  pumpTimestamp: number;
   dailyChange: number;
 }
 
 const INTERVALS = ['5m', '15m', '30m', '1h', '4h', '1d'];
 
-const PumpAnalysisPage: React.FC = () => {
+const PullbackAnalysisPage: React.FC = () => {
   const [lookback, setLookback] = useState<number>(150);
-  const [scanWindow, setScanWindow] = useState<number>(20);
   const [interval, setInterval] = useState<string>('5m');
   const [results, setResults] = useState<ResultRow[]>([]);
   const [selectedRow, setSelectedRow] = useState<ResultRow | null>(null);
@@ -77,56 +71,100 @@ const PumpAnalysisPage: React.FC = () => {
     checkDataAvailability();
   }, [interval]);
 
-  const calculateScoreAtSlice = (
-    fullKlines: string[][],
-    currentIndex: number,
-  ) => {
-    const startIdx = Math.max(0, currentIndex - lookback + 1);
-    const slice = fullKlines.slice(startIdx, currentIndex + 1);
+  const calculatePullbackScore = (klines: string[][]) => {
+    if (klines.length < 60) return null;
 
-    if (slice.length < 20) return null;
+    // 1. 寻找过去 lookback 范围内的最高点 (作为起爆后的顶)
+    const recentKlines = klines.slice(-lookback);
+    let maxHigh = -1;
+    let maxIdx = -1;
 
-    // 1. Volume Score
-    const shortLookback = 5;
-    const recentSlice = slice.slice(-shortLookback);
+    // 我们不希望最高点就在最后几根线（那样还没回调），所以排除最后 5 根
+    for (let i = 0; i < recentKlines.length - 10; i++) {
+      const high = parseFloat(recentKlines[i][2]);
+      if (high > maxHigh) {
+        maxHigh = high;
+        maxIdx = i;
+      }
+    }
+
+    if (maxIdx < 10) return null; // 顶太靠前了
+
+    // 2. 寻找这个顶之前的起爆点 (低点)
+    let minLow = maxHigh;
+    let minIdx = -1;
+    // 往前看 30 根找起跳点
+    const preMaxRange = recentKlines.slice(Math.max(0, maxIdx - 30), maxIdx);
+    if (preMaxRange.length === 0) return null;
+
+    minLow = Math.min(...preMaxRange.map((k) => parseFloat(k[3])));
+
+    const pumpHeight = (maxHigh - minLow) / minLow;
+    if (pumpHeight < 0.05) return null; // 涨幅不足 5% 不算爆拉
+
+    // 3. 计算当前回调深度
+    const currentPrice = parseFloat(recentKlines[recentKlines.length - 1][4]);
+    const currentRetrace = (maxHigh - currentPrice) / (maxHigh - minLow);
+
+    // 回调分数: 理想在 0.382 - 0.618 之间 (黄金分割)
+    let rScore = 0;
+    if (currentRetrace > 0.2 && currentRetrace < 0.8) {
+      // 越接近 0.5 分数越高
+      rScore = (1 - Math.abs(currentRetrace - 0.5) * 2) * 100;
+    } else {
+      return null; // 回调太多或太少都不行
+    }
+
+    // 4. 成交量缩减分数 (回调缩量)
+    const pumpPeakVol = parseFloat(recentKlines[maxIdx][5]);
     const recentAvgVol =
-      recentSlice.reduce((sum, k) => sum + parseFloat(k[5]), 0) / shortLookback;
-    const longAvgVol =
-      slice.reduce((sum, k) => sum + parseFloat(k[5]), 0) / slice.length;
-    const volRatio = longAvgVol > 0 ? recentAvgVol / longAvgVol : 0;
-    const vScore = Math.min(volRatio * 10, 100);
+      recentKlines.slice(-5).reduce((sum, k) => sum + parseFloat(k[5]), 0) / 5;
+    const volRatio = recentAvgVol / pumpPeakVol;
+    // 缩量越厉害 (volRatio 越小) 分数越高
+    const vScore = Math.max(0, (1 - volRatio) * 100);
 
-    // 2. Price Score
-    const prices = slice.map((k) => parseFloat(k[4]));
-    const minPrice = Math.min(...prices);
-    const currentPrice = prices[prices.length - 1];
-    const priceChange = minPrice > 0 ? (currentPrice - minPrice) / minPrice : 0;
-    const pScore = Math.min(priceChange * 200, 100);
+    // 5. 均线支撑 (MA25)
+    const maPeriod = 25;
+    const ma25 =
+      recentKlines
+        .slice(-maPeriod)
+        .reduce((sum, k) => sum + parseFloat(k[4]), 0) / maPeriod;
+    const distToMA = Math.abs(currentPrice - ma25) / ma25;
+    // 距离 MA25 越近 (2%以内) 分数越高
+    const mScore = Math.max(0, (1 - distToMA / 0.03) * 100);
 
-    // 3. New High Score
-    const highs = slice.map((k) => parseFloat(k[2]));
-    const maxHigh = Math.max(...highs.slice(0, -1));
-    const isNewHigh = currentPrice >= maxHigh * 0.98;
-    const hScore = isNewHigh ? 100 : 0;
-
-    // 4. Trend Score
-    const bullishCount = recentSlice.filter(
-      (k) => parseFloat(k[4]) > parseFloat(k[1]),
-    ).length;
-    const tScore = (bullishCount / shortLookback) * 100;
+    // 6. 趋势强度 (Pump 越猛分数越高)
+    const sScore = Math.min(pumpHeight * 500, 100);
 
     const totalScore =
-      vScore * 0.4 + pScore * 0.3 + hScore * 0.2 + tScore * 0.1;
+      rScore * 0.3 + vScore * 0.2 + mScore * 0.3 + sScore * 0.2;
+
+    // 7. 计算今日涨幅 (从 UTC 00:00 开始，即悉尼时间 11:00 AM)
+    const now = new Date();
+    const startOfTodayUtc = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+    );
+    const todayKlines = klines.filter((k) => Number(k[0]) >= startOfTodayUtc);
+    let dailyChange = 0;
+    if (todayKlines.length > 0) {
+      const dayOpen = parseFloat(todayKlines[0][1]);
+      dailyChange = (currentPrice - dayOpen) / dayOpen;
+    } else {
+      // 如果数据不够长，回退到使用全部数据的第一个点
+      const dayOpen = parseFloat(klines[0][1]);
+      dailyChange = (currentPrice - dayOpen) / dayOpen;
+    }
 
     return {
       score: Math.round(totalScore),
+      pumpHeight,
+      retracement: currentRetrace,
       volRatio,
-      priceChange,
-      isNewHigh,
-      vScore,
-      pScore,
-      hScore,
-      tScore,
+      distToMA,
+      pumpTimestamp: Number(recentKlines[maxIdx][0]) / 1000,
+      dailyChange,
     };
   };
 
@@ -134,64 +172,15 @@ const PumpAnalysisPage: React.FC = () => {
     setIsLoading(true);
     try {
       const storedData = await getAllKlineDataByInterval(interval);
-      if (storedData.length === 0) {
-        setResults([]);
-        setAllKlineData([]);
-        return;
-      }
-
       const newResults: ResultRow[] = [];
       const validKlineData: KlineRecord[] = [];
 
       storedData.forEach((record) => {
-        const klines = record.klines;
-        const length = klines.length;
-        if (length < lookback) return;
-
-        let bestScore = -1;
-        let bestScoreData: any = null;
-        let bestOffset = 0;
-        let bestTimestamp = 0;
-
-        // 在最近的 scanWindow 范围内寻找最高分
-        const startScan = Math.max(lookback, length - scanWindow);
-        for (let i = startScan; i < length; i++) {
-          const scoreData = calculateScoreAtSlice(klines, i);
-          if (scoreData && scoreData.score > bestScore) {
-            bestScore = scoreData.score;
-            bestScoreData = scoreData;
-            bestOffset = length - 1 - i;
-            bestTimestamp = Number(klines[i][0]);
-          }
-        }
-
-        if (bestScoreData && bestScoreData.score > 30) {
-          // 计算今日涨幅 (从 UTC 00:00 开始)
-          const now = new Date();
-          const startOfTodayUtc = Date.UTC(
-            now.getUTCFullYear(),
-            now.getUTCMonth(),
-            now.getUTCDate(),
-          );
-          const todayKlines = klines.filter(
-            (k) => Number(k[0]) >= startOfTodayUtc,
-          );
-          const currentPrice = parseFloat(klines[klines.length - 1][4]);
-          let dailyChange = 0;
-          if (todayKlines.length > 0) {
-            const dayOpen = parseFloat(todayKlines[0][1]);
-            dailyChange = (currentPrice - dayOpen) / dayOpen;
-          } else {
-            const dayOpen = parseFloat(klines[0][1]);
-            dailyChange = (currentPrice - dayOpen) / dayOpen;
-          }
-
+        const scoreData = calculatePullbackScore(record.klines);
+        if (scoreData && scoreData.score > 40) {
           newResults.push({
             symbol: record.symbol,
-            ...bestScoreData,
-            offset: bestOffset,
-            timestamp: bestTimestamp / 1000, // 秒级
-            dailyChange,
+            ...scoreData,
           });
           validKlineData.push(record);
         }
@@ -202,7 +191,7 @@ const PumpAnalysisPage: React.FC = () => {
       setAllKlineData(validKlineData);
       setSelectedRow(null);
     } catch (error) {
-      console.error('分析过程中发生错误:', error);
+      console.error('分析失败:', error);
     } finally {
       setIsLoading(false);
     }
@@ -224,17 +213,13 @@ const PumpAnalysisPage: React.FC = () => {
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
-
     const remainingHours = diffHours % 24;
     const remainingMins = diffMins % 60;
 
-    if (diffDays > 0) {
+    if (diffDays > 0)
       return `${diffDays}天${remainingHours}小时${remainingMins}分钟`;
-    } else if (diffHours > 0) {
-      return `${diffHours}小时${remainingMins}分钟`;
-    } else {
-      return `${diffMins}分钟`;
-    }
+    if (diffHours > 0) return `${diffHours}小时${remainingMins}分钟`;
+    return `${diffMins}分钟`;
   };
 
   return (
@@ -260,7 +245,7 @@ const PumpAnalysisPage: React.FC = () => {
             </Grid>
             <Grid item xs={6} sm="auto">
               <TextField
-                label="回溯基准"
+                label="回溯范围"
                 type="number"
                 size="small"
                 fullWidth
@@ -268,25 +253,15 @@ const PumpAnalysisPage: React.FC = () => {
                 onChange={(e) => setLookback(Number(e.target.value))}
               />
             </Grid>
-            <Grid item xs={6} sm="auto">
-              <TextField
-                label="搜索范围"
-                type="number"
-                size="small"
-                fullWidth
-                value={scanWindow}
-                onChange={(e) => setScanWindow(Number(e.target.value))}
-                placeholder="最近多少根"
-              />
-            </Grid>
             <Grid item xs={12} sm="auto">
               <Button
                 variant="contained"
+                color="secondary"
                 onClick={handleSearch}
                 disabled={isLoading || totalAvailable === 0}
                 size="small"
               >
-                爆破分析
+                回调分析 (二波)
               </Button>
             </Grid>
             <Grid item xs={12} sm="auto">
@@ -315,8 +290,10 @@ const PumpAnalysisPage: React.FC = () => {
       </Card>
 
       <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="subtitle2">爆破榜单 ({results.length})</Typography>
-        <Tooltip title="打分逻辑: 交易量突增(40%) + 价格涨幅(30%) + 接近前高(20%) + 近期连阳(10%)">
+        <Typography variant="subtitle2">
+          回调潜力榜 ({results.length})
+        </Typography>
+        <Tooltip title="打分逻辑: 回调深度(30%) + 缩量程度(20%) + 均线支撑(30%) + 起爆强度(20%)">
           <InfoIcon fontSize="small" color="action" />
         </Tooltip>
       </Box>
@@ -329,10 +306,9 @@ const PumpAnalysisPage: React.FC = () => {
                 <TableCell>币名</TableCell>
                 <TableCell align="right">综合分</TableCell>
                 <TableCell align="right">今日涨幅</TableCell>
-                <TableCell align="right">位置</TableCell>
-                <TableCell align="right">量比</TableCell>
-                <TableCell align="right">涨幅</TableCell>
-                <TableCell align="right">状态</TableCell>
+                <TableCell align="right">爆拉幅度</TableCell>
+                <TableCell align="right">回调深度</TableCell>
+                <TableCell align="right">距MA25</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -349,7 +325,7 @@ const PumpAnalysisPage: React.FC = () => {
                     align="right"
                     sx={{
                       fontWeight: 'bold',
-                      color: row.score > 70 ? 'error.main' : 'inherit',
+                      color: row.score > 70 ? 'secondary.main' : 'inherit',
                     }}
                   >
                     {row.score}
@@ -364,30 +340,21 @@ const PumpAnalysisPage: React.FC = () => {
                   >
                     {(row.dailyChange * 100).toFixed(1)}%
                   </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{
-                      color:
-                        row.offset === 0 ? 'success.main' : 'text.secondary',
-                    }}
-                  >
-                    {row.offset === 0 ? '当前' : `${row.offset}根前`}
+                  <TableCell align="right">
+                    {(row.pumpHeight * 100).toFixed(1)}%
                   </TableCell>
                   <TableCell align="right">
-                    {row.volRatio.toFixed(1)}x
+                    {(row.retracement * 100).toFixed(0)}%
                   </TableCell>
                   <TableCell align="right">
-                    {(row.priceChange * 100).toFixed(1)}%
-                  </TableCell>
-                  <TableCell align="right">
-                    {row.isNewHigh ? '突破' : '放量'}
+                    {(row.distToMA * 100).toFixed(1)}%
                   </TableCell>
                 </TableRow>
               ))}
               {results.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    未发现明显爆破迹象
+                  <TableCell colSpan={5} align="center">
+                    未发现符合回调形态的币种
                   </TableCell>
                 </TableRow>
               )}
@@ -447,7 +414,7 @@ const PumpAnalysisPage: React.FC = () => {
                 allKlineData.find((k) => k.symbol === selectedRow.symbol)
                   ?.klines || []
               }
-              selectedDate={selectedRow.timestamp}
+              selectedDate={selectedRow.pumpTimestamp}
             />
           </Paper>
         </Box>
@@ -456,4 +423,4 @@ const PumpAnalysisPage: React.FC = () => {
   );
 };
 
-export default PumpAnalysisPage;
+export default PullbackAnalysisPage;
