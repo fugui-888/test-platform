@@ -151,6 +151,40 @@ const KlineWithVolAndMA: React.FC<Props> = ({
       }
     }
 
+    // 6. 查找最大成交量点并绘制水平线
+    if (klines && klines.length > 0) {
+      let maxVolIndex = 0;
+      let maxVol = -1;
+
+      klines.forEach((k, idx) => {
+        const vol = Number(k[5]);
+        if (vol > maxVol) {
+          maxVol = vol;
+          maxVolIndex = idx;
+        }
+      });
+
+      const peakK = klines[maxVolIndex];
+      const peakPrice = Number(peakK[4]); // 收盘价
+      const peakQuoteVol = Number(peakK[7]); // USDT成交额
+
+      // 格式化USDT成交额 (例如 1.2M, 500K)
+      const formatQuoteVol = (v: number) => {
+        if (v >= 1000000) return (v / 1000000).toFixed(2) + 'M';
+        if (v >= 1000) return (v / 1000).toFixed(1) + 'K';
+        return v.toFixed(0);
+      };
+
+      candleSeries.createPriceLine({
+        price: peakPrice,
+        color: 'rgba(239, 83, 80, 0.5)', // 红色半透明
+        lineWidth: 2,
+        lineStyle: 0, // 实线
+        axisLabelVisible: true,
+        title: `峰值成交: ${formatQuoteVol(peakQuoteVol)}`,
+      });
+    }
+
     // 自适应缩放并设置默认显示条数 (最近 120 条)
     if (candleData.length > 0) {
       const barsToShow = 80;
