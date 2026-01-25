@@ -23,7 +23,7 @@ import {
 const INTERVALS = ['5m', '15m', '30m', '1h', '4h', '1d'];
 
 const LoadDataPage: React.FC = () => {
-  const [interval, setInterval] = useState<string>('1d');
+  const [interval, setInterval] = useState<string>('5m');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [progress, setProgress] = useState<{ current: number; total: number }>({
     current: 0,
@@ -73,7 +73,7 @@ const LoadDataPage: React.FC = () => {
               const res = await getKLineData({
                 symbol: item.symbol,
                 interval: interval as any,
-                limit: '498',
+                limit: '400',
               });
               if (res && res.klines && res.klines.length > 0) {
                 await saveKlineData(item.symbol, interval, res.klines);

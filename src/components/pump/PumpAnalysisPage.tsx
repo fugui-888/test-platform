@@ -47,7 +47,7 @@ const INTERVALS = ['5m', '15m', '30m', '1h', '4h', '1d'];
 const PumpAnalysisPage: React.FC = () => {
   const [lookback, setLookback] = useState<number>(100);
   const [scanWindow, setScanWindow] = useState<number>(20);
-  const [interval, setInterval] = useState<string>('1d');
+  const [interval, setInterval] = useState<string>('5m');
   const [results, setResults] = useState<ResultRow[]>([]);
   const [selectedRow, setSelectedRow] = useState<ResultRow | null>(null);
   const [allKlineData, setAllKlineData] = useState<KlineRecord[]>([]);
