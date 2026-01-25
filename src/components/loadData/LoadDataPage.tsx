@@ -106,12 +106,26 @@ const LoadDataPage: React.FC = () => {
     }
   };
 
+  const formatTimeDiff = (timestamp: number) => {
+    const diffMs = Date.now() - timestamp;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    const remainingHours = diffHours % 24;
+    const remainingMins = diffMins % 60;
+
+    if (diffDays > 0) {
+      return `${diffDays}天${remainingHours}小时${remainingMins}分钟`;
+    } else if (diffHours > 0) {
+      return `${diffHours}小时${remainingMins}分钟`;
+    } else {
+      return `${diffMins}分钟`;
+    }
+  };
+
   return (
     <Box sx={{ p: 1 }}>
-      <Typography variant="h6" gutterBottom>
-        数据加载
-      </Typography>
-
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box
           sx={{
@@ -197,7 +211,7 @@ const LoadDataPage: React.FC = () => {
               >
                 • {int}:{' '}
                 {lastUpdate[int]
-                  ? `${new Date(lastUpdate[int]).toLocaleString()}`
+                  ? `${formatTimeDiff(lastUpdate[int])}前`
                   : '无'}
               </Typography>
               {lastUpdate[int] && (

@@ -54,9 +54,28 @@ const HighPointPage: React.FC = () => {
   const [allKlineData, setAllKlineData] = useState<KlineRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [totalAvailable, setTotalAvailable] = useState<number>(0);
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<number | null>(null);
 
   const handleFilterChange = (field: keyof Filter, value: any) => {
     setFilter((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const formatTimeDiff = (timestamp: number) => {
+    const diffMs = Date.now() - timestamp;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    const remainingHours = diffHours % 24;
+    const remainingMins = diffMins % 60;
+
+    if (diffDays > 0) {
+      return `${diffDays}天${remainingHours}小时${remainingMins}分钟`;
+    } else if (diffHours > 0) {
+      return `${diffHours}小时${remainingMins}分钟`;
+    } else {
+      return `${diffMins}分钟`;
+    }
   };
 
   useEffect(() => {
@@ -64,9 +83,16 @@ const HighPointPage: React.FC = () => {
       try {
         const storedData = await getAllKlineDataByInterval(interval);
         setTotalAvailable(storedData.length);
+        if (storedData.length > 0) {
+          const maxTime = Math.max(...storedData.map((r) => r.lastUpdated));
+          setLastUpdatedTime(maxTime);
+        } else {
+          setLastUpdatedTime(null);
+        }
       } catch (error) {
         console.error('检查数据可用性失败:', error);
         setTotalAvailable(0);
+        setLastUpdatedTime(null);
       }
     };
     checkDataAvailability();
@@ -211,12 +237,21 @@ const HighPointPage: React.FC = () => {
                 sx={{
                   color: totalAvailable > 0 ? 'success.main' : 'error.main',
                   fontWeight: 'bold',
+                  display: 'block',
                 }}
               >
                 {totalAvailable > 0
                   ? `本地已缓存: ${totalAvailable} 个币种`
                   : '本地无数据, 请先在加载页面加载数据'}
               </Typography>
+              {lastUpdatedTime && (
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', display: 'block' }}
+                >
+                  数据更新于: {formatTimeDiff(lastUpdatedTime)}前
+                </Typography>
+              )}
             </Grid>
           </Grid>
         </CardContent>

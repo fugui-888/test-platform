@@ -45,7 +45,7 @@ interface ResultRow {
 const INTERVALS = ['5m', '15m', '30m', '1h', '4h', '1d'];
 
 const PumpAnalysisPage: React.FC = () => {
-  const [lookback, setLookback] = useState<number>(100);
+  const [lookback, setLookback] = useState<number>(150);
   const [scanWindow, setScanWindow] = useState<number>(20);
   const [interval, setInterval] = useState<string>('5m');
   const [results, setResults] = useState<ResultRow[]>([]);
@@ -53,15 +53,24 @@ const PumpAnalysisPage: React.FC = () => {
   const [allKlineData, setAllKlineData] = useState<KlineRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [totalAvailable, setTotalAvailable] = useState<number>(0);
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<number | null>(null);
 
   useEffect(() => {
     const checkDataAvailability = async () => {
       try {
         const storedData = await getAllKlineDataByInterval(interval);
         setTotalAvailable(storedData.length);
+
+        if (storedData.length > 0) {
+          const maxTime = Math.max(...storedData.map((r) => r.lastUpdated));
+          setLastUpdatedTime(maxTime);
+        } else {
+          setLastUpdatedTime(null);
+        }
       } catch (error) {
         console.error('检查数据可用性失败:', error);
         setTotalAvailable(0);
+        setLastUpdatedTime(null);
       }
     };
     checkDataAvailability();
@@ -188,6 +197,24 @@ const PumpAnalysisPage: React.FC = () => {
     }
   };
 
+  const formatTimeDiff = (timestamp: number) => {
+    const diffMs = Date.now() - timestamp;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    const remainingHours = diffHours % 24;
+    const remainingMins = diffMins % 60;
+
+    if (diffDays > 0) {
+      return `${diffDays}天${remainingHours}小时${remainingMins}分钟`;
+    } else if (diffHours > 0) {
+      return `${diffHours}小时${remainingMins}分钟`;
+    } else {
+      return `${diffMins}分钟`;
+    }
+  };
+
   return (
     <Box sx={{ p: 1 }}>
       <Card sx={{ mb: 2 }}>
@@ -245,12 +272,21 @@ const PumpAnalysisPage: React.FC = () => {
                 variant="caption"
                 sx={{
                   color: totalAvailable > 0 ? 'success.main' : 'error.main',
+                  display: 'block',
                 }}
               >
                 {totalAvailable > 0
                   ? `本地已缓存: ${totalAvailable} 个币种`
                   : '请先加载数据'}
               </Typography>
+              {lastUpdatedTime && (
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', display: 'block' }}
+                >
+                  数据更新于: {formatTimeDiff(lastUpdatedTime)}前
+                </Typography>
+              )}
             </Grid>
           </Grid>
         </CardContent>
