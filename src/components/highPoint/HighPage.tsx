@@ -48,7 +48,7 @@ const HighPointPage: React.FC = () => {
     count: 100,
     minRatio: 2.5,
   });
-  const [interval, setInterval] = useState<string>('5m');
+  const [interval, setInterval] = useState<string>('1d');
   const [results, setResults] = useState<ResultRow[]>([]);
   const [selectedRow, setSelectedRow] = useState<ResultRow | null>(null);
   const [allKlineData, setAllKlineData] = useState<KlineRecord[]>([]);
