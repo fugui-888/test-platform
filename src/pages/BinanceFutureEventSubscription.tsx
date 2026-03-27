@@ -22,6 +22,9 @@ import MEXCListen5mChart, {
 import MEXCListen30mChart, {
   type ListenCandle30,
 } from '../views/MEXCBoard/MEXCListen30mChart';
+import MEXCListen10mChart, {
+  type ListenCandle10,
+} from '../views/MEXCBoard/MEXCListen10mChart';
 
 type Candle = {
   ts: number;
@@ -87,6 +90,48 @@ function buildAnchored30mFromLast5m(candles5: ListenCandle5m[]): {
   return { candles30, selected30Index };
 }
 
+function buildAnchored10mFromLast5m(candles5: ListenCandle5m[]): {
+  candles10: ListenCandle10[];
+  selected10Index: number | null;
+} {
+  const n = candles5.length;
+  if (n < 2) return { candles10: [], selected10Index: null };
+  const clicked5Index = n - 1;
+  const mod = clicked5Index % 2;
+  let end = mod;
+  while (end < 1) end += 2;
+  const candles10: ListenCandle10[] = [];
+  let selected10Index: number | null = null;
+
+  for (; end < n; end += 2) {
+    const start = end - 1;
+    const slice = candles5.slice(start, end + 1);
+    if (slice.length !== 2) break;
+    const open = slice[0].open;
+    const close = slice[1].close;
+    let high = slice[0].high;
+    let low = slice[0].low;
+    for (let i = 1; i < 2; i++) {
+      high = Math.max(high, slice[i].high);
+      low = Math.min(low, slice[i].low);
+    }
+    const vol = slice.reduce((s, c) => s + c.vol, 0);
+    const idx10 = candles10.length;
+    candles10.push({
+      ts: slice[1].ts,
+      open,
+      high,
+      low,
+      close,
+      vol,
+      startIndex: start,
+      endIndex: end,
+    });
+    if (end === clicked5Index) selected10Index = idx10;
+  }
+  return { candles10, selected10Index };
+}
+
 function last30mAsSixth5m(candles5: Candle[]): Candle | null {
   if (candles5.length < 6) return null;
   const chunk = candles5.slice(-6);
@@ -130,8 +175,13 @@ const BinanceFutureEventSubscription: React.FC = () => {
   const [lastFetchAt, setLastFetchAt] = useState<Date | null>(null);
   const [nowTick, setNowTick] = useState<Date>(new Date());
   const [latestCandles, setLatestCandles] = useState<ListenCandle5m[]>([]);
+  const [use10m, setUse10m] = useState(false);
   const anchored30 = useMemo(
     () => buildAnchored30mFromLast5m(latestCandles),
+    [latestCandles],
+  );
+  const anchored10 = useMemo(
+    () => buildAnchored10mFromLast5m(latestCandles),
     [latestCandles],
   );
 
@@ -304,11 +354,39 @@ const BinanceFutureEventSubscription: React.FC = () => {
                     variant="caption"
                     sx={{ color: '#fff', fontWeight: 700, lineHeight: 2 }}
                   >
-                    30m
+                    {use10m ? '10m' : '30m'}
                   </Typography>
                 </Box>
-                {anchored30.candles30.length > 0 &&
-                anchored30.selected30Index != null ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setUse10m((v) => !v)}
+                  sx={{
+                    position: 'absolute',
+                    top: 2,
+                    right: 2,
+                    zIndex: 20,
+                    minWidth: 74,
+                    px: 1,
+                    py: 0.15,
+                    fontSize: '0.72rem',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {use10m ? 'show 30m' : 'show 10m'}
+                </Button>
+                {use10m ? (
+                  anchored10.candles10.length > 0 &&
+                  anchored10.selected10Index != null ? (
+                    <MEXCListen10mChart
+                      candles10={anchored10.candles10}
+                      height={300}
+                    />
+                  ) : (
+                    <Alert severity="info">no data</Alert>
+                  )
+                ) : anchored30.candles30.length > 0 &&
+                  anchored30.selected30Index != null ? (
                   <MEXCListen30mChart
                     candles30={anchored30.candles30}
                     height={300}
