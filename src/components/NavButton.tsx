@@ -68,6 +68,14 @@ export default function NavButton() {
               <ListItemText primary="Analysis" />
             </ListItemButton>
           </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              onClick={() => onListItemClick(routes.EventListen)}
+              sx={{ padding: '5px 20px' }}
+            >
+              <ListItemText primary="Listen" />
+            </ListItemButton>
+          </ListItem>
         </List>
       </Popover>
     </Box>

@@ -2,6 +2,7 @@ import { Routes, Route, BrowserRouter, Navigate } from 'react-router-dom';
 import { DataContextProvider } from './context/DataContext';
 import NavButton from './components/NavButton';
 import Analysis from './pages/Analysis';
+import BinanceFutureEventSubscription from './pages/BinanceFutureEventSubscription';
 // import Monitor from './pages/Monitor';
 
 import './App.css';
@@ -9,6 +10,7 @@ import './App.css';
 export const routes = {
   // Monitor: 'monitor',
   Analysis: 'analysis',
+  EventListen: 'event-listen',
 };
 
 export const Root = () => (
@@ -16,6 +18,10 @@ export const Root = () => (
     <Routes>
       {/* <Route path={routes.Monitor} element={<Monitor />} /> */}
       <Route path={routes.Analysis} element={<Analysis />} />
+      <Route
+        path={routes.EventListen}
+        element={<BinanceFutureEventSubscription />}
+      />
       <Route path="/" element={<Navigate to={routes.Analysis} />} />
     </Routes>
   </>
