@@ -3,6 +3,15 @@ import { init, dispose, ActionType, LineType } from 'klinecharts';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
+function hexPoints(cx: number, cy: number, r: number): string {
+  const pts: string[] = [];
+  for (let k = 0; k < 6; k++) {
+    const a = -Math.PI / 2 + (k * Math.PI) / 3;
+    pts.push(`${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`);
+  }
+  return pts.join(' ');
+}
+
 export type ListenCandle10 = {
   ts: number;
   open: number;
@@ -17,9 +26,14 @@ export type ListenCandle10 = {
 type Props = {
   candles10: ListenCandle10[];
   height?: number;
+  zAbsThreshold?: number;
 };
 
-const MEXCListen10mChart: React.FC<Props> = ({ candles10, height = 550 }) => {
+const MEXCListen10mChart: React.FC<Props> = ({
+  candles10,
+  height = 550,
+  zAbsThreshold = 2.3,
+}) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<ReturnType<typeof init> | null>(null);
   const [overlayTick, setOverlayTick] = useState(0);
@@ -130,6 +144,44 @@ const MEXCListen10mChart: React.FC<Props> = ({ candles10, height = 550 }) => {
     setOverlayTick((n) => n + 1);
   }, [candles10]);
 
+  const zFilterOverlays = useMemo(() => {
+    const chart = chartRef.current;
+    if (!chart) return [];
+    const th = Number.isFinite(zAbsThreshold)
+      ? Math.max(0, zAbsThreshold)
+      : 2.3;
+    const gapAbove = -20;
+    const gapBelow = 25;
+    const r = 5;
+    const out: Array<{ cx: number; cy: number }> = [];
+    for (let i = 0; i < candles10.length; i++) {
+      const m = maStd.ma30[i];
+      const s = maStd.sigma[i];
+      if (!Number.isFinite(m) || !Number.isFinite(s) || s <= 0) continue;
+      const z = Math.abs((candles10[i].close - m) / s);
+      if (!(z > th)) continue;
+      const c = candles10[i];
+      if (c.close > m) {
+        const pHigh = chart.convertToPixel(
+          { dataIndex: i, value: c.high },
+          { paneId: 'candle_pane', absolute: true },
+        ) as any;
+        if (!pHigh || !Number.isFinite(pHigh.x) || !Number.isFinite(pHigh.y))
+          continue;
+        out.push({ cx: pHigh.x, cy: pHigh.y - gapAbove - r });
+      } else {
+        const pLow = chart.convertToPixel(
+          { dataIndex: i, value: c.low },
+          { paneId: 'candle_pane', absolute: true },
+        ) as any;
+        if (!pLow || !Number.isFinite(pLow.x) || !Number.isFinite(pLow.y))
+          continue;
+        out.push({ cx: pLow.x, cy: pLow.y + gapBelow + r });
+      }
+    }
+    return out;
+  }, [candles10, maStd, overlayTick, zAbsThreshold]);
+
   const latestIdx = candles10.length - 1;
   const bar = latestIdx >= 0 ? candles10[latestIdx] : null;
   const ma = latestIdx >= 0 ? maStd.ma30[latestIdx] : NaN;
@@ -141,6 +193,7 @@ const MEXCListen10mChart: React.FC<Props> = ({ candles10, height = 550 }) => {
     bar && Number.isFinite(diff) && Number.isFinite(sigma) && sigma > 0
       ? Math.abs(diff / sigma)
       : NaN;
+  const th = Number.isFinite(zAbsThreshold) ? Math.max(0, zAbsThreshold) : 2.3;
 
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>
@@ -164,7 +217,7 @@ const MEXCListen10mChart: React.FC<Props> = ({ candles10, height = 550 }) => {
         <Box
           component="span"
           sx={
-            Number.isFinite(absZ) && absZ > 2.3
+            Number.isFinite(absZ) && absZ > th
               ? { color: 'error.main', fontWeight: 700 }
               : { color: 'text.secondary', fontWeight: 400 }
           }
@@ -173,6 +226,29 @@ const MEXCListen10mChart: React.FC<Props> = ({ candles10, height = 550 }) => {
         </Box>
       </Typography>
       <Box ref={containerRef} sx={{ width: '100%', height }} />
+      {zFilterOverlays.length > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 11,
+          }}
+        >
+          <svg width="100%" height="100%">
+            {zFilterOverlays.map((o, i) => (
+              <polygon
+                key={`z10-${i}`}
+                points={hexPoints(o.cx, o.cy, 5)}
+                fill="#1E88E5"
+                stroke="#0D47A1"
+                strokeWidth={1}
+                opacity={0.92}
+              />
+            ))}
+          </svg>
+        </Box>
+      )}
     </Box>
   );
 };

@@ -2,7 +2,7 @@
   "name": "smart-platform",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://m-beibei.github.io/test-platform",
+  "homepage": "https://fugui-888.github.io/test-platform",
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
@@ -38,7 +38,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "predeploy": "yarn build",
+    "predeploy": "yarn build && cp build/index.html build/404.html",
     "deploy": "gh-pages -d build",
     "build": "react-scripts build",
     "test": "react-scripts test",

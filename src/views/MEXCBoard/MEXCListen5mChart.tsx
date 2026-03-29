@@ -191,6 +191,7 @@ const MEXCListen5mChart: React.FC<Props> = ({
     bar && Number.isFinite(diff) && Number.isFinite(sigma) && sigma > 0
       ? Math.abs(diff / sigma)
       : NaN;
+  const th = Number.isFinite(zAbsThreshold) ? Math.max(0, zAbsThreshold) : 2.3;
 
   return (
     <Box sx={{ position: 'relative', width: '100%' }}>
@@ -213,7 +214,7 @@ const MEXCListen5mChart: React.FC<Props> = ({
         <Box
           component="span"
           sx={
-            Number.isFinite(absZ) && absZ > 2.3
+            Number.isFinite(absZ) && absZ > th
               ? { color: 'error.main', fontWeight: 700 }
               : { color: 'text.secondary', fontWeight: 400 }
           }

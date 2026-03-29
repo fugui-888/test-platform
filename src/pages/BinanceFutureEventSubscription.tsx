@@ -5,13 +5,20 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import SettingsIcon from '@mui/icons-material/Settings';
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
+  IconButton,
+  TextField,
   Typography,
 } from '@mui/material';
 import getKLineData from '../utils/fetch/getKLineData';
@@ -170,12 +177,27 @@ function formatMinSec(totalSec: number): string {
   return `${m}m${s}s`;
 }
 
+const DEFAULT_Z_THRESHOLD = 2.3;
+
+function parseZInput(raw: string, fallback: number): number {
+  const n = parseFloat(raw.trim());
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 const BinanceFutureEventSubscription: React.FC = () => {
   const [listening, setListening] = useState(false);
   const [lastFetchAt, setLastFetchAt] = useState<Date | null>(null);
   const [nowTick, setNowTick] = useState<Date>(new Date());
   const [latestCandles, setLatestCandles] = useState<ListenCandle5m[]>([]);
-  const [use10m, setUse10m] = useState(false);
+  const [use10m, setUse10m] = useState(true);
+  const [zThreshold5m, setZThreshold5m] = useState(DEFAULT_Z_THRESHOLD);
+  const [zThreshold10m, setZThreshold10m] = useState(DEFAULT_Z_THRESHOLD);
+  const [zThreshold30m, setZThreshold30m] = useState(DEFAULT_Z_THRESHOLD);
+  const [zDialogOpen, setZDialogOpen] = useState(false);
+  const [draftZ5m, setDraftZ5m] = useState(String(DEFAULT_Z_THRESHOLD));
+  const [draftZ10m, setDraftZ10m] = useState(String(DEFAULT_Z_THRESHOLD));
+  const [draftZ30m, setDraftZ30m] = useState(String(DEFAULT_Z_THRESHOLD));
+
   const anchored30 = useMemo(
     () => buildAnchored30mFromLast5m(latestCandles),
     [latestCandles],
@@ -234,12 +256,30 @@ const BinanceFutureEventSubscription: React.FC = () => {
   const secToNext5m = secondsUntilNextFiveMin(nowTick);
   const inNotifyWindow = secToNext5m < 30;
 
+  const openZDialog = () => {
+    setDraftZ5m(String(zThreshold5m));
+    setDraftZ10m(String(zThreshold10m));
+    setDraftZ30m(String(zThreshold30m));
+    setZDialogOpen(true);
+  };
+
+  const handleZDialogConfirm = () => {
+    setZThreshold5m(parseZInput(draftZ5m, DEFAULT_Z_THRESHOLD));
+    setZThreshold10m(parseZInput(draftZ10m, DEFAULT_Z_THRESHOLD));
+    setZThreshold30m(parseZInput(draftZ30m, DEFAULT_Z_THRESHOLD));
+    setZDialogOpen(false);
+  };
+
+  const handleZDialogCancel = () => {
+    setZDialogOpen(false);
+  };
+
   return (
     <Box>
       <Card sx={{ mt: 4, mb: 2 }}>
         <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={6}>
+          <Grid container spacing={1} alignItems="center">
+            <Grid item xs={5}>
               <Button
                 fullWidth
                 variant="contained"
@@ -249,7 +289,7 @@ const BinanceFutureEventSubscription: React.FC = () => {
                 {listening ? 'stop' : 'start(5s)'}
               </Button>
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={5}>
               <Button
                 fullWidth
                 variant="outlined"
@@ -258,7 +298,72 @@ const BinanceFutureEventSubscription: React.FC = () => {
                 refresh
               </Button>
             </Grid>
+            <Grid
+              item
+              xs={2}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <IconButton
+                color="primary"
+                aria-label="z threshold settings"
+                onClick={openZDialog}
+                size="small"
+              >
+                <SettingsIcon />
+              </IconButton>
+            </Grid>
           </Grid>
+
+          <Dialog
+            open={zDialogOpen}
+            onClose={handleZDialogCancel}
+            fullWidth
+            maxWidth="xs"
+          >
+            <DialogTitle>|z| threshold</DialogTitle>
+            <DialogContent
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}
+            >
+              <TextField
+                label="5m K-line |z|"
+                value={draftZ5m}
+                onChange={(e) => setDraftZ5m(e.target.value)}
+                type="number"
+                inputProps={{ step: 0.01, min: 0.01 }}
+                size="small"
+                fullWidth
+                sx={{ mt: 2 }}
+              />
+              <TextField
+                label="10m K-line |z|"
+                value={draftZ10m}
+                onChange={(e) => setDraftZ10m(e.target.value)}
+                type="number"
+                inputProps={{ step: 0.01, min: 0.01 }}
+                size="small"
+                fullWidth
+              />
+              <TextField
+                label="30m K-line |z|"
+                value={draftZ30m}
+                onChange={(e) => setDraftZ30m(e.target.value)}
+                type="number"
+                inputProps={{ step: 0.01, min: 0.01 }}
+                size="small"
+                fullWidth
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleZDialogCancel}>cancel</Button>
+              <Button variant="contained" onClick={handleZDialogConfirm}>
+                confirm
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           <Box
             sx={{
@@ -273,9 +378,24 @@ const BinanceFutureEventSubscription: React.FC = () => {
               sx={{
                 p: 1,
                 borderRadius: 1.5,
-                border: '1px solid',
-                borderColor: inNotifyWindow ? 'error.main' : 'divider',
                 width: '100%',
+                boxSizing: 'border-box',
+                border: '2px solid',
+                borderColor: inNotifyWindow ? 'error.main' : 'divider',
+                ...(inNotifyWindow && {
+                  animation: 'notifyWindowPulse 0.9s ease-in-out infinite',
+                  '@keyframes notifyWindowPulse': {
+                    '0%, 100%': {
+                      borderColor: 'error.main',
+                      boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.55)',
+                    },
+                    '50%': {
+                      borderColor: 'error.dark',
+                      boxShadow:
+                        '0 0 0 4px rgba(211, 47, 47, 0.35), 0 0 18px 2px rgba(211, 47, 47, 0.25)',
+                    },
+                  },
+                }),
               }}
             >
               <Box>
@@ -285,7 +405,10 @@ const BinanceFutureEventSubscription: React.FC = () => {
                   sx={{
                     display: 'flex',
                     justifyContent: 'space-between',
+                    alignItems: 'center',
                     gap: 1,
+                    minHeight: 28,
+                    lineHeight: 1.25,
                   }}
                 >
                   <Box component="span">
@@ -294,7 +417,13 @@ const BinanceFutureEventSubscription: React.FC = () => {
                   </Box>
                   <Box
                     component="span"
-                    sx={{ textAlign: 'right', whiteSpace: 'nowrap' }}
+                    sx={{
+                      textAlign: 'right',
+                      whiteSpace: 'nowrap',
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                      color: inNotifyWindow ? 'error.main' : 'text.secondary',
+                    }}
                   >
                     to 5m: {formatMinSec(secToNext5m)}
                   </Box>
@@ -329,7 +458,7 @@ const BinanceFutureEventSubscription: React.FC = () => {
                   <MEXCListen5mChart
                     candles5={latestCandles}
                     height={300}
-                    zAbsThreshold={2.3}
+                    zAbsThreshold={zThreshold5m}
                   />
                 ) : (
                   <Alert severity="info">no data</Alert>
@@ -381,6 +510,7 @@ const BinanceFutureEventSubscription: React.FC = () => {
                     <MEXCListen10mChart
                       candles10={anchored10.candles10}
                       height={300}
+                      zAbsThreshold={zThreshold10m}
                     />
                   ) : (
                     <Alert severity="info">no data</Alert>
@@ -390,6 +520,7 @@ const BinanceFutureEventSubscription: React.FC = () => {
                   <MEXCListen30mChart
                     candles30={anchored30.candles30}
                     height={300}
+                    zAbsThreshold={zThreshold30m}
                   />
                 ) : (
                   <Alert severity="info">no data</Alert>
