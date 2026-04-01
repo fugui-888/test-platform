@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createChart,
   ColorType,
@@ -12,14 +12,30 @@ interface Props {
   symbol: string;
   klines: string[][];
   selectedDate?: number; // 秒级时间戳
+  zThreshold?: number;
 }
 
 const KlineWithVolAndMA: React.FC<Props> = ({
   symbol,
   klines,
   selectedDate,
+  zThreshold = 2.3,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [hexPoints, setHexPoints] = useState<Array<{ x: number; y: number }>>(
+    [],
+  );
+
+  const Z_THRESHOLD = zThreshold;
+
+  const buildHex = (cx: number, cy: number, r: number) => {
+    const pts: string[] = [];
+    for (let k = 0; k < 6; k++) {
+      const a = -Math.PI / 2 + (k * Math.PI) / 3;
+      pts.push(`${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`);
+    }
+    return pts.join(' ');
+  };
 
   useEffect(() => {
     if (!containerRef.current || !klines || klines.length === 0) return;
@@ -70,7 +86,7 @@ const KlineWithVolAndMA: React.FC<Props> = ({
     const addMA = (period: number, color: string) => {
       const line = chart.addSeries(LineSeries, {
         color,
-        lineWidth: 1,
+        lineWidth: 3,
         priceLineVisible: false,
         lastValueVisible: false,
       });
@@ -87,9 +103,22 @@ const KlineWithVolAndMA: React.FC<Props> = ({
       line.setData(maData);
     };
 
-    addMA(5, '#2962FF');
-    addMA(10, '#FF6D00');
-    addMA(20, '#D81B60');
+    addMA(30, '#0D47A1');
+
+    // MA30 与 sigma，用于计算 z 值和六边形标记
+    const MA_N = 30;
+    const ma30: number[] = new Array(candleData.length).fill(NaN);
+    const sigma: number[] = new Array(candleData.length).fill(NaN);
+    for (let i = MA_N - 1; i < candleData.length; i++) {
+      const window = candleData
+        .slice(i - (MA_N - 1), i + 1)
+        .map((d) => d.close);
+      const mean = window.reduce((s, v) => s + v, 0) / window.length;
+      const variance =
+        window.reduce((s, v) => s + (v - mean) ** 2, 0) / window.length;
+      ma30[i] = mean;
+      sigma[i] = Math.sqrt(variance);
+    }
 
     // 4. 成交量
     const volumeSeries = chart.addSeries(HistogramSeries, {
@@ -151,41 +180,7 @@ const KlineWithVolAndMA: React.FC<Props> = ({
       }
     }
 
-    // 6. 查找最大成交量点并绘制水平线
-    if (klines && klines.length > 0) {
-      let maxVolIndex = 0;
-      let maxVol = -1;
-
-      klines.forEach((k, idx) => {
-        const vol = Number(k[5]);
-        if (vol > maxVol) {
-          maxVol = vol;
-          maxVolIndex = idx;
-        }
-      });
-
-      const peakK = klines[maxVolIndex];
-      const peakPrice = Number(peakK[4]); // 收盘价
-      const peakQuoteVol = Number(peakK[7]); // USDT成交额
-
-      // 格式化USDT成交额 (例如 1.2M, 500K)
-      const formatQuoteVol = (v: number) => {
-        if (v >= 1000000) return (v / 1000000).toFixed(2) + 'M';
-        if (v >= 1000) return (v / 1000).toFixed(1) + 'K';
-        return v.toFixed(0);
-      };
-
-      candleSeries.createPriceLine({
-        price: peakPrice,
-        color: 'rgba(239, 83, 80, 0.5)', // 红色半透明
-        lineWidth: 2,
-        lineStyle: 0, // 实线
-        axisLabelVisible: true,
-        title: `峰值成交: ${formatQuoteVol(peakQuoteVol)}`,
-      });
-    }
-
-    // 自适应缩放并设置默认显示条数 (最近 120 条)
+    // 自适应缩放并设置默认显示条数 (最近 80 条)
     if (candleData.length > 0) {
       const barsToShow = 80;
       const totalBars = candleData.length;
@@ -197,21 +192,72 @@ const KlineWithVolAndMA: React.FC<Props> = ({
       chart.timeScale().fitContent();
     }
 
+    const syncHexOverlay = () => {
+      const out: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i < candleData.length; i++) {
+        const m = ma30[i];
+        const s = sigma[i];
+        if (!Number.isFinite(m) || !Number.isFinite(s) || s <= 0) continue;
+        const c = candleData[i];
+        const z = (c.close - m) / s;
+        if (!(z > Z_THRESHOLD)) continue;
+        const x = chart.timeScale().timeToCoordinate(c.time as any);
+        const y = candleSeries.priceToCoordinate(c.high);
+        if (!Number.isFinite(x as number) || !Number.isFinite(y as number))
+          continue;
+        out.push({ x: x as number, y: (y as number) - 12 });
+      }
+      setHexPoints(out);
+    };
+
     const resize = () => {
       if (containerRef.current) {
         chart.applyOptions({ width: containerRef.current.clientWidth });
+        syncHexOverlay();
       }
     };
 
+    syncHexOverlay();
+    chart.timeScale().subscribeVisibleTimeRangeChange(syncHexOverlay);
     window.addEventListener('resize', resize);
 
     return () => {
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(syncHexOverlay);
       window.removeEventListener('resize', resize);
       chart.remove();
+      setHexPoints([]);
     };
-  }, [klines, selectedDate, symbol]);
+  }, [klines, selectedDate, symbol, zThreshold]);
 
-  return <div ref={containerRef} style={{ width: '100%', height: 400 }} />;
+  return (
+    <div style={{ position: 'relative', width: '100%', height: 400 }}>
+      <div ref={containerRef} style={{ width: '100%', height: 400 }} />
+      {hexPoints.length > 0 && (
+        <svg
+          width="100%"
+          height="100%"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            pointerEvents: 'none',
+            zIndex: 30,
+          }}
+        >
+          {hexPoints.map((p, i) => (
+            <polygon
+              key={`z-hex-${i}`}
+              points={buildHex(p.x, p.y, 5)}
+              fill="#1E88E5"
+              stroke="#0D47A1"
+              strokeWidth={1}
+              opacity={0.92}
+            />
+          ))}
+        </svg>
+      )}
+    </div>
+  );
 };
 
 export default KlineWithVolAndMA;

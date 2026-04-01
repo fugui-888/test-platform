@@ -238,7 +238,7 @@ const BinanceFutureEventSubscription: React.FC = () => {
     void runListenFetch();
     const id = window.setInterval(() => {
       const now = new Date();
-      if (now.getSeconds() % 5 !== 0) return;
+      if (now.getSeconds() % 2 !== 0) return;
       const secSlot = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
       if (lastQuerySecondRef.current === secSlot) return;
       lastQuerySecondRef.current = secSlot;
@@ -286,7 +286,7 @@ const BinanceFutureEventSubscription: React.FC = () => {
                 color={listening ? 'error' : 'primary'}
                 onClick={() => setListening((v) => !v)}
               >
-                {listening ? 'stop' : 'start(5s)'}
+                {listening ? 'stop' : 'start(2s)'}
               </Button>
             </Grid>
             <Grid item xs={5}>

@@ -43,7 +43,7 @@ export default function Analysis() {
           <Tab label="Data" sx={{ minHeight: '48px' }} />
           <Tab label="High" sx={{ minHeight: '48px' }} />
           <Tab label="Pump" sx={{ minHeight: '48px' }} />
-          <Tab label="Pullback" sx={{ minHeight: '48px' }} />
+          <Tab label="Z Filter" sx={{ minHeight: '48px' }} />
         </Tabs>
       </Box>
       <Box sx={{ p: 0.5 }}>

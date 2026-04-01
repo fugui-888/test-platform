@@ -39,6 +39,7 @@ interface ResultRow {
   close: number;
   minLow: number;
   minLowDate: number;
+  zScore: number | null;
 }
 
 const INTERVALS = ['5m', '15m', '30m', '1h', '4h', '1d'];
@@ -131,6 +132,19 @@ const HighPointPage: React.FC = () => {
         const close = parseFloat(klines[endIdx][4]);
         const open = parseFloat(klines[endIdx][1]);
         const ratio = close / minLow;
+        let zScore: number | null = null;
+        if (endIdx >= 29) {
+          const window = klines
+            .slice(endIdx - 29, endIdx + 1)
+            .map((k) => parseFloat(k[4]));
+          const mean = window.reduce((s, v) => s + v, 0) / window.length;
+          const variance =
+            window.reduce((s, v) => s + (v - mean) ** 2, 0) / window.length;
+          const sigma = Math.sqrt(variance);
+          if (sigma > 0) {
+            zScore = (close - mean) / sigma;
+          }
+        }
 
         if (ratio >= filter.minRatio) {
           newResults.push({
@@ -140,6 +154,7 @@ const HighPointPage: React.FC = () => {
             close,
             minLow,
             minLowDate: minLowDate / 1000,
+            zScore,
           });
           validKlineData.push(record);
         }
@@ -268,6 +283,7 @@ const HighPointPage: React.FC = () => {
                 <TableRow>
                   <TableCell sx={{ py: 0.5, px: 1 }}>币名</TableCell>
                   <TableCell sx={{ py: 0.5, px: 1 }}>倍数</TableCell>
+                  <TableCell sx={{ py: 0.5, px: 1 }}>z(MA30)</TableCell>
                   <TableCell sx={{ py: 0.5, px: 1 }}>最小值日期</TableCell>
                 </TableRow>
               </TableHead>
@@ -286,6 +302,20 @@ const HighPointPage: React.FC = () => {
                     <TableCell sx={{ py: 0.5, px: 1 }}>
                       {row.ratio.toFixed(2)}
                     </TableCell>
+                    <TableCell
+                      sx={{
+                        py: 0.5,
+                        px: 1,
+                        color:
+                          row.zScore != null && row.zScore > 2.3
+                            ? 'error.main'
+                            : 'inherit',
+                        fontWeight:
+                          row.zScore != null && row.zScore > 2.3 ? 700 : 400,
+                      }}
+                    >
+                      {row.zScore == null ? '—' : row.zScore.toFixed(3)}
+                    </TableCell>
                     <TableCell sx={{ py: 0.5, px: 1 }}>
                       {DateTime.fromSeconds(row.minLowDate).toFormat(
                         'MM-dd HH:mm',
@@ -295,7 +325,7 @@ const HighPointPage: React.FC = () => {
                 ))}
                 {results.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} align="center">
+                    <TableCell colSpan={4} align="center">
                       <Typography variant="caption" color="text.disabled">
                         无数据
                       </Typography>
