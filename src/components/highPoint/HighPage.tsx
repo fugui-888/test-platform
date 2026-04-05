@@ -15,12 +15,13 @@ import {
   Paper,
   Typography,
   ButtonGroup,
-  CircularProgress,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  Checkbox,
 } from '@mui/material';
+import { useBinanceUsdtWatchlist } from '../../context/BinanceUsdtWatchlistContext';
 import { DateTime } from 'luxon';
 import { getAllKlineDataByInterval, KlineRecord } from '../../utils/db';
 import KlineWithVolAndMA from './KlineWithVolAndMA';
@@ -45,6 +46,7 @@ interface ResultRow {
 const INTERVALS = ['5m', '15m', '30m', '1h', '4h', '1d'];
 
 const HighPointPage: React.FC = () => {
+  const { selectedSymbols, toggleSymbol } = useBinanceUsdtWatchlist();
   const [filter, setFilter] = useState<Filter>({
     count: 100,
     minRatio: 2.5,
@@ -281,6 +283,7 @@ const HighPointPage: React.FC = () => {
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell padding="checkbox" sx={{ py: 0.5, width: 40 }} />
                   <TableCell sx={{ py: 0.5, px: 1 }}>币名</TableCell>
                   <TableCell sx={{ py: 0.5, px: 1 }}>倍数</TableCell>
                   <TableCell sx={{ py: 0.5, px: 1 }}>z(MA30)</TableCell>
@@ -296,6 +299,18 @@ const HighPointPage: React.FC = () => {
                     onClick={() => setSelectedRow(row)}
                     style={{ cursor: 'pointer' }}
                   >
+                    <TableCell
+                      padding="checkbox"
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{ py: 0.5 }}
+                    >
+                      <Checkbox
+                        size="small"
+                        checked={selectedSymbols.includes(row.symbol)}
+                        onChange={() => toggleSymbol(row.symbol)}
+                        inputProps={{ 'aria-label': `watchlist ${row.symbol}` }}
+                      />
+                    </TableCell>
                     <TableCell sx={{ py: 0.5, px: 1 }}>
                       {row.symbol.replace('USDT', '')}
                     </TableCell>
@@ -325,7 +340,7 @@ const HighPointPage: React.FC = () => {
                 ))}
                 {results.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} align="center">
+                    <TableCell colSpan={5} align="center">
                       <Typography variant="caption" color="text.disabled">
                         无数据
                       </Typography>

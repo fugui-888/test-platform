@@ -8,6 +8,7 @@ import {
   ButtonGroup,
   Card,
   CardContent,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -28,6 +29,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { useBinanceUsdtWatchlist } from '../../context/BinanceUsdtWatchlistContext';
 import { getAllKlineDataByInterval, KlineRecord } from '../../utils/db';
 import KlineWithVolAndMA from '../highPoint/KlineWithVolAndMA';
 
@@ -42,6 +44,7 @@ const INTERVALS = ['5m', '15m', '30m', '1h', '4h', '1d'];
 const DEFAULT_Z_THRESHOLD = 2.3;
 
 const PullbackAnalysisPage: React.FC = () => {
+  const { selectedSymbols, toggleSymbol } = useBinanceUsdtWatchlist();
   const [interval, setInterval] = useState<string>('5m');
   const [results, setResults] = useState<ResultRow[]>([]);
   const [selectedRow, setSelectedRow] = useState<ResultRow | null>(null);
@@ -251,6 +254,7 @@ const PullbackAnalysisPage: React.FC = () => {
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox" sx={{ width: 40 }} />
                 <TableCell>币名</TableCell>
                 <TableCell align="right">z(MA30)</TableCell>
                 <TableCell align="right">close</TableCell>
@@ -265,6 +269,17 @@ const PullbackAnalysisPage: React.FC = () => {
                   onClick={() => setSelectedRow(row)}
                   sx={{ cursor: 'pointer' }}
                 >
+                  <TableCell
+                    padding="checkbox"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      size="small"
+                      checked={selectedSymbols.includes(row.symbol)}
+                      onChange={() => toggleSymbol(row.symbol)}
+                      inputProps={{ 'aria-label': `watchlist ${row.symbol}` }}
+                    />
+                  </TableCell>
                   <TableCell>{row.symbol.replace('USDT', '')}</TableCell>
                   <TableCell
                     align="right"
@@ -280,7 +295,7 @@ const PullbackAnalysisPage: React.FC = () => {
               ))}
               {results.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} align="center">
+                  <TableCell colSpan={4} align="center">
                     暂无符合条件数据
                   </TableCell>
                 </TableRow>

@@ -58,8 +58,9 @@ const LoadDataPage: React.FC = () => {
 
     try {
       const allTicks = await getAllPrice();
-      // 过滤掉不带USDT的或者一些特殊的币种（如果需要）
-      const usdtTicks = allTicks.filter((t) => t.symbol.endsWith('USDT'));
+      const usdtTicks = allTicks.filter(
+        (t) => t.symbol.endsWith('USDT') && !t.symbol.startsWith('USDC'),
+      );
       const total = usdtTicks.length;
       setProgress({ current: 0, total });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   createChart,
   ColorType,
@@ -6,7 +6,36 @@ import {
   CandlestickSeries,
   LineSeries,
   HistogramSeries,
+  type Time,
+  type MouseEventParams,
 } from 'lightweight-charts';
+
+const CHART_TIMEZONE = 'Australia/Sydney';
+
+function formatTimeAxisSydney(time: Time): string {
+  if (typeof time === 'number') {
+    const d = new Date(time * 1000);
+    return new Intl.DateTimeFormat('en-AU', {
+      timeZone: CHART_TIMEZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(d);
+  }
+  if (typeof time === 'string') {
+    const d = new Date(time);
+    if (!Number.isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat('en-AU', {
+        timeZone: CHART_TIMEZONE,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(d);
+    }
+    return time;
+  }
+  return `${time.year}-${time.month}-${time.day}`;
+}
 
 interface Props {
   symbol: string;
@@ -25,6 +54,12 @@ const KlineWithVolAndMA: React.FC<Props> = ({
   const [hexPoints, setHexPoints] = useState<Array<{ x: number; y: number }>>(
     [],
   );
+  const [hoverTip, setHoverTip] = useState<{
+    x: number;
+    y: number;
+    pct: string;
+    z: string;
+  } | null>(null);
 
   const Z_THRESHOLD = zThreshold;
 
@@ -53,9 +88,14 @@ const KlineWithVolAndMA: React.FC<Props> = ({
       crosshair: {
         mode: CrosshairMode.Normal,
       },
+      localization: {
+        locale: 'en-AU',
+        timeFormatter: formatTimeAxisSydney,
+      },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
+        barSpacing: 8,
       },
       width: containerRef.current.clientWidth,
       height: 400,
@@ -124,6 +164,8 @@ const KlineWithVolAndMA: React.FC<Props> = ({
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: '',
+      lastValueVisible: false,
+      priceLineVisible: false,
     });
 
     volumeSeries.priceScale().applyOptions({
@@ -200,7 +242,7 @@ const KlineWithVolAndMA: React.FC<Props> = ({
         if (!Number.isFinite(m) || !Number.isFinite(s) || s <= 0) continue;
         const c = candleData[i];
         const z = (c.close - m) / s;
-        if (!(z > Z_THRESHOLD)) continue;
+        if (!(z > 0 && z > Z_THRESHOLD)) continue;
         const x = chart.timeScale().timeToCoordinate(c.time as any);
         const y = candleSeries.priceToCoordinate(c.high);
         if (!Number.isFinite(x as number) || !Number.isFinite(y as number))
@@ -221,17 +263,89 @@ const KlineWithVolAndMA: React.FC<Props> = ({
     chart.timeScale().subscribeVisibleTimeRangeChange(syncHexOverlay);
     window.addEventListener('resize', resize);
 
+    const onCrosshairMove = (param: MouseEventParams<Time>) => {
+      if (!param.point || param.time === undefined) {
+        setHoverTip(null);
+        return;
+      }
+      const t = param.time;
+      if (typeof t !== 'number') {
+        setHoverTip(null);
+        return;
+      }
+      let idx = candleData.findIndex((d) => d.time === t);
+      if (idx < 0) {
+        let best = -1;
+        let bestDiff = Infinity;
+        candleData.forEach((d, i) => {
+          const diff = Math.abs(d.time - t);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            best = i;
+          }
+        });
+        if (best >= 0 && bestDiff < 0.5) idx = best;
+      }
+      if (idx < 0) {
+        setHoverTip(null);
+        return;
+      }
+      const c = candleData[idx];
+      const pctRaw = c.open !== 0 ? ((c.close - c.open) / c.open) * 100 : 0;
+      const pctStr = `${pctRaw >= 0 ? '+' : ''}${pctRaw.toFixed(2)}%`;
+      const m = ma30[idx];
+      const s = sigma[idx];
+      let zStr = '—';
+      if (Number.isFinite(m) && Number.isFinite(s) && s > 0) {
+        const z = (c.close - m) / s;
+        zStr = z.toFixed(3);
+      }
+      setHoverTip({
+        x: param.point.x,
+        y: param.point.y,
+        pct: pctStr,
+        z: zStr,
+      });
+    };
+
+    chart.subscribeCrosshairMove(onCrosshairMove);
+
     return () => {
+      chart.unsubscribeCrosshairMove(onCrosshairMove);
       chart.timeScale().unsubscribeVisibleTimeRangeChange(syncHexOverlay);
       window.removeEventListener('resize', resize);
       chart.remove();
       setHexPoints([]);
+      setHoverTip(null);
     };
   }, [klines, selectedDate, symbol, zThreshold]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: 400 }}>
       <div ref={containerRef} style={{ width: '100%', height: 400 }} />
+      {hoverTip && (
+        <div
+          style={{
+            position: 'absolute',
+            left: hoverTip.x + 12,
+            top: hoverTip.y + 12,
+            zIndex: 50,
+            pointerEvents: 'none',
+            background: 'rgba(255,255,255,0.96)',
+            border: '1px solid #ddd',
+            borderRadius: 4,
+            padding: '6px 8px',
+            fontSize: 12,
+            lineHeight: 1.45,
+            color: '#333',
+            boxShadow: '0 1px 6px rgba(0,0,0,0.12)',
+            maxWidth: 180,
+          }}
+        >
+          <div>涨幅: {hoverTip.pct}</div>
+          <div>z(MA30): {hoverTip.z}</div>
+        </div>
+      )}
       {hexPoints.length > 0 && (
         <svg
           width="100%"
