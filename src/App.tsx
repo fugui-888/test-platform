@@ -1,7 +1,6 @@
 import { Routes, Route, BrowserRouter, Navigate } from 'react-router-dom';
 import { DataContextProvider } from './context/DataContext';
 import { BinanceUsdtWatchlistProvider } from './context/BinanceUsdtWatchlistContext';
-import BinanceUsdtWatchlistFab from './components/BinanceUsdtWatchlistFab';
 import NavButton from './components/NavButton';
 import Analysis from './pages/Analysis';
 import BinanceFutureEventSubscription from './pages/BinanceFutureEventSubscription';
@@ -40,7 +39,6 @@ function App() {
           <BinanceUsdtWatchlistProvider>
             <NavButton />
             <Root />
-            <BinanceUsdtWatchlistFab />
           </BinanceUsdtWatchlistProvider>
         </DataContextProvider>
       </div>

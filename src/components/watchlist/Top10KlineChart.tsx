@@ -497,6 +497,7 @@ const Top10KlineChart: React.FC<Props> = ({
         timeScale: {
           timeVisible: true,
           secondsVisible: false,
+          barSpacing: 16,
           tickMarkFormatter: (time: Time) => formatTimeToSydney(time, 'axis'),
           /** 默认 true：全量 setData 时若最后一根在视区内会自动平移视窗，导致用户缩放/拖动被「弹回」 */
           shiftVisibleRangeOnNewBar: false,
@@ -610,10 +611,11 @@ const Top10KlineChart: React.FC<Props> = ({
 
     const n = candleData.length;
     const applyDefaultRange = () => {
-      const barsToShow = Math.min(120, n);
+      const barsToShow = Math.min(70, n);
+      const rightBlankBars = 16;
       chart.timeScale().setVisibleLogicalRange({
         from: Math.max(0, n - barsToShow),
-        to: n,
+        to: n + rightBlankBars,
       });
     };
 
@@ -728,28 +730,32 @@ const Top10KlineChart: React.FC<Props> = ({
   return (
     <Box sx={{ width: '100%', position: 'relative' }}>
       <Typography
-        variant="body2"
-        sx={{ mb: 0.5, color: '#1565c0', fontWeight: 700 }}
+        component="div"
+        variant="caption"
+        sx={{ mb: 0.2, color: '#1565c0', fontWeight: 700, fontSize: '0.72rem', lineHeight: 1.25 }}
       >
         z(MA30): {zVal == null ? '—' : zVal.toFixed(3)} · 当前涨幅:{' '}
-        {risePct == null ? '—' : `${risePct.toFixed(2)}%`} ·{' '}
-        <Typography component="span" sx={{ color: '#6a1b9a', fontWeight: 800 }}>
-          距上次触碰: {barsSinceTouch == null ? '—' : `${barsSinceTouch} 根`} ·
-          触碰后总涨幅:{' '}
-          {riseSinceTouchPct == null ? '—' : `${riseSinceTouchPct.toFixed(2)}%`}
-        </Typography>
+        {risePct == null ? '—' : `${risePct.toFixed(2)}%`}
         {streakHover != null && (
           <>
             {' · '}
             <Typography
               component="span"
-              sx={{ color: '#bf360c', fontWeight: 800 }}
+              sx={{ color: '#bf360c', fontWeight: 800, fontSize: 'inherit' }}
             >
               {streakHover.kind === 'green' ? '连绿' : '连红'}{' '}
               {streakHover.pct.toFixed(2)}%（{streakHover.count}根）
             </Typography>
           </>
         )}
+      </Typography>
+      <Typography
+        component="div"
+        variant="caption"
+        sx={{ mb: 0.4, color: '#6a1b9a', fontWeight: 800, fontSize: '0.72rem', lineHeight: 1.25 }}
+      >
+        距上次触碰: {barsSinceTouch == null ? '—' : `${barsSinceTouch} 根`} · 触碰后总涨幅:{' '}
+        {riseSinceTouchPct == null ? '—' : `${riseSinceTouchPct.toFixed(2)}%`} ·
       </Typography>
       <Box sx={{ position: 'relative', width: '100%', height: chartHeight }}>
         <Box ref={containerRef} sx={{ width: '100%', height: chartHeight }} />

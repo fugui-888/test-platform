@@ -172,7 +172,7 @@ export default function WatchlistTabPage() {
     defaultAnchorDateTimeWatchlist(),
   );
   const [topNInput, setTopNInput] = useState('10');
-  const [chartInterval, setChartInterval] = useState<ChartInterval>('5m');
+  const [chartInterval, setChartInterval] = useState<ChartInterval>('10m');
   const [queryKline, setQueryKline] = useState<MEXCKLINE | null>(null);
   const [queryTradeLine, setQueryTradeLine] = useState<TradeLinePoint[]>([]);
   const [queryKlineLoading, setQueryKlineLoading] = useState(false);
