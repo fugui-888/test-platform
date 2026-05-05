@@ -72,7 +72,7 @@ import {
   type LookbackHourBar,
 } from '../utils/watchlistAnchorCache';
 
-const WS_URL = 'wss://fstream.binance.com/ws/!ticker@arr';
+const WS_URL = 'wss://fstream.binance.com/market/ws/!ticker@arr';
 const CANDLE_KEEP_MIN = 360;
 const QUERY_KLINE_LIMIT = 300;
 const QUERY_KLINE_POLL_MS = 2000;
@@ -117,7 +117,7 @@ function defaultAnchorDateTimeWatchlist(): DateTime {
     .startOf('day')
     .set({ hour: 10, minute: 0, second: 0, millisecond: 0 });
   if (now < today10) {
-    return now.startOf('day');
+    return today10.minus({ days: 1 });
   }
   return today10;
 }
@@ -451,6 +451,9 @@ export default function WatchlistTabPage() {
                 streakDir: null,
                 streakCount: null,
                 streakPct: null,
+                streak30mDir: null,
+                streak30mCount: null,
+                streak30mPct: null,
                 streak10mDir: null,
                 streak10mCount: null,
                 streak10mPct: null,
@@ -573,7 +576,17 @@ export default function WatchlistTabPage() {
         if (stopRef.current) return;
         let arr: unknown[] = [];
         try {
-          arr = JSON.parse(evt.data) as unknown[];
+          const payload = JSON.parse(evt.data) as unknown;
+          if (Array.isArray(payload)) {
+            arr = payload;
+          } else if (
+            payload &&
+            typeof payload === 'object' &&
+            (payload as { stream?: string }).stream === '!ticker@arr' &&
+            Array.isArray((payload as { data?: unknown }).data)
+          ) {
+            arr = (payload as { data: unknown[] }).data;
+          }
         } catch {
           return;
         }
@@ -710,11 +723,11 @@ export default function WatchlistTabPage() {
                 inputProps={{
                   max: DateTime.now().setZone('local').toFormat('yyyy-MM-dd'),
                 }}
-                sx={{ flex: '1 1 0', minWidth: 0 }}
+                sx={{ flex: '0 0 148px', width: 148, minWidth: 0 }}
               />
               <FormControl
                 size="small"
-                sx={{ flex: '0 0 86px', minWidth: 86 }}
+                sx={{ flex: '1 1 0', minWidth: 120 }}
                 disabled={running}
               >
                 <InputLabel id="watchlist-anchor-hour-label">时</InputLabel>
@@ -886,6 +899,19 @@ export default function WatchlistTabPage() {
                   </TableCell>
                   <TableCell align="right">
                     <TableSortLabel
+                      active={topTableSortA?.key === 'streak30m'}
+                      direction={
+                        topTableSortA?.key === 'streak30m'
+                          ? topTableSortA.dir
+                          : 'desc'
+                      }
+                      onClick={() => toggleTopTableSortA('streak30m')}
+                    >
+                      {isNarrow ? '30m' : '连续30m涨跌'}
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="right">
+                    <TableSortLabel
                       active={topTableSortA?.key === 'streak10m'}
                       direction={
                         topTableSortA?.key === 'streak10m'
@@ -946,6 +972,20 @@ export default function WatchlistTabPage() {
                         : topMonitoring && zPair?.streakDir === 'down'
                         ? { color: '#c62828', fontWeight: 700 }
                         : undefined;
+                    const streak30mText =
+                      topMonitoring &&
+                      zPair?.streak30mPct != null &&
+                      zPair?.streak30mCount != null
+                        ? `${zPair.streak30mPct.toFixed(2)}%（${
+                            zPair.streak30mCount
+                          }）`
+                        : '—';
+                    const streak30mSx =
+                      topMonitoring && zPair?.streak30mDir === 'up'
+                        ? { color: '#2e7d32', fontWeight: 700 }
+                        : topMonitoring && zPair?.streak30mDir === 'down'
+                        ? { color: '#c62828', fontWeight: 700 }
+                        : undefined;
                     const streak10mText =
                       topMonitoring &&
                       zPair?.streak10mPct != null &&
@@ -982,6 +1022,9 @@ export default function WatchlistTabPage() {
                         >
                           {formatPct(r.dayChangePct)}
                         </TableCell>
+                        <TableCell align="right" sx={streak30mSx}>
+                          {streak30mText}
+                        </TableCell>
                         <TableCell align="right" sx={streak10mSx}>
                           {streak10mText}
                         </TableCell>
@@ -1002,7 +1045,7 @@ export default function WatchlistTabPage() {
                 {dayChangeReadyA && topRowsForDisplayA.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       align="center"
                       sx={{ color: 'text.secondary' }}
                     >
@@ -1012,7 +1055,7 @@ export default function WatchlistTabPage() {
                 )}
                 {!dayChangeReadyA && running && (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={8} align="center">
                       <CircularProgress size={22} />
                     </TableCell>
                   </TableRow>
@@ -1020,7 +1063,7 @@ export default function WatchlistTabPage() {
                 {!running && (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       align="center"
                       sx={{ color: 'text.secondary' }}
                     >

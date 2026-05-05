@@ -6,6 +6,9 @@ export type TopMonitorZPair = {
   streakDir: 'up' | 'down' | null;
   streakCount: number | null;
   streakPct: number | null;
+  streak30mDir: 'up' | 'down' | null;
+  streak30mCount: number | null;
+  streak30mPct: number | null;
   streak10mDir: 'up' | 'down' | null;
   streak10mCount: number | null;
   streak10mPct: number | null;
@@ -101,6 +104,68 @@ export function aggregate5mRowsTo10mKline(rows: unknown[][]): MEXCKLINE {
     )
       continue;
     const bucketTs = Math.floor(ts / 600000) * 600000;
+    const prev = map.get(bucketTs);
+    if (!prev) {
+      map.set(bucketTs, {
+        ts: bucketTs,
+        open,
+        high,
+        low,
+        close,
+        vol: Number.isFinite(vol) ? vol : 0,
+        lastTs: ts,
+      });
+      continue;
+    }
+    if (ts < prev.lastTs) continue;
+    prev.high = Math.max(prev.high, high);
+    prev.low = Math.min(prev.low, low);
+    prev.close = close;
+    prev.vol += Number.isFinite(vol) ? vol : 0;
+    prev.lastTs = ts;
+  }
+
+  const buckets = Array.from(map.values()).sort((a, b) => a.ts - b.ts);
+  return {
+    time: buckets.map((b) => Math.floor(b.ts / 1000)),
+    open: buckets.map((b) => b.open),
+    high: buckets.map((b) => b.high),
+    low: buckets.map((b) => b.low),
+    close: buckets.map((b) => b.close),
+    vol: buckets.map((b) => b.vol),
+  };
+}
+
+const THIRTY_MIN_MS = 30 * 60 * 1000;
+
+export function aggregate5mRowsTo30mKline(rows: unknown[][]): MEXCKLINE {
+  type Bucket = {
+    ts: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    vol: number;
+    lastTs: number;
+  };
+  const map = new Map<number, Bucket>();
+  for (const row of rows) {
+    if (!Array.isArray(row)) continue;
+    const ts = Number(row[0]);
+    const open = parseFloat(String(row[1]));
+    const high = parseFloat(String(row[2]));
+    const low = parseFloat(String(row[3]));
+    const close = parseFloat(String(row[4]));
+    const vol = parseFloat(String(row[5]));
+    if (
+      !Number.isFinite(ts) ||
+      !Number.isFinite(open) ||
+      !Number.isFinite(high) ||
+      !Number.isFinite(low) ||
+      !Number.isFinite(close)
+    )
+      continue;
+    const bucketTs = Math.floor(ts / THIRTY_MIN_MS) * THIRTY_MIN_MS;
     const prev = map.get(bucketTs);
     if (!prev) {
       map.set(bucketTs, {
@@ -283,17 +348,22 @@ export function buildTopMonitorZPairFrom5mRows(
   const touch5m = computeMa30LastTouchGainBars(ohlc5m);
   const streak = compute5mStreakFromRows(rows);
   const kline10m = aggregate5mRowsTo10mKline(rows);
+  const kline30m = aggregate5mRowsTo30mKline(rows);
   const touch10m = computeMa30LastTouchGainBars({
     high: kline10m.high,
     low: kline10m.low,
     close: kline10m.close,
   });
   const streak10m = compute10mStreakFromKline(kline10m);
+  const streak30m = compute10mStreakFromKline(kline30m);
   const tradeCount15m = computeRecent15mTradeCountFrom5mRows(rows);
   return {
     streakDir: streak.dir,
     streakCount: streak.count,
     streakPct: streak.pct,
+    streak30mDir: streak30m.dir,
+    streak30mCount: streak30m.count,
+    streak30mPct: streak30m.pct,
     streak10mDir: streak10m.dir,
     streak10mCount: streak10m.count,
     streak10mPct: streak10m.pct,

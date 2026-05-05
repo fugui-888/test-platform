@@ -1,6 +1,10 @@
 import type { TopMonitorZPair } from './watchlistMonitorKline';
 
-export type TopTableSortKey = 'tradeCount15m' | 'streak5m' | 'streak10m';
+export type TopTableSortKey =
+  | 'tradeCount15m'
+  | 'streak5m'
+  | 'streak10m'
+  | 'streak30m';
 export type TopTableSortState = {
   key: TopTableSortKey;
   dir: 'asc' | 'desc';
@@ -38,7 +42,8 @@ export function applyTopDisplaySort(
     if (!zPair) return null;
     if (topTableSort.key === 'tradeCount15m') return zPair.tradeCount15m;
     if (topTableSort.key === 'streak5m') return zPair.streakPct;
-    return zPair.streak10mPct;
+    if (topTableSort.key === 'streak10m') return zPair.streak10mPct;
+    return zPair.streak30mPct;
   };
   copy.sort((a, b) => {
     const av = getSortValue(a);
