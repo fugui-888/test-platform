@@ -42,7 +42,7 @@ export default function Analysis() {
         <Tabs value={value} onChange={handleChange} variant="fullWidth">
           <Tab label="Data" sx={{ minHeight: '48px' }} />
           <Tab label="High" sx={{ minHeight: '48px' }} />
-          <Tab label="Z Filter" sx={{ minHeight: '48px' }} />
+          <Tab label="Filter" sx={{ minHeight: '48px' }} />
           <Tab label="Watch" sx={{ minHeight: '48px' }} />
         </Tabs>
       </Box>

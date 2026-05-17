@@ -732,7 +732,13 @@ const Top10KlineChart: React.FC<Props> = ({
       <Typography
         component="div"
         variant="caption"
-        sx={{ mb: 0.2, color: '#1565c0', fontWeight: 700, fontSize: '0.72rem', lineHeight: 1.25 }}
+        sx={{
+          mb: 0.2,
+          color: '#1565c0',
+          fontWeight: 700,
+          fontSize: '0.72rem',
+          lineHeight: 1.25,
+        }}
       >
         z(MA30): {zVal == null ? '—' : zVal.toFixed(3)} · 当前涨幅:{' '}
         {risePct == null ? '—' : `${risePct.toFixed(2)}%`}
@@ -752,9 +758,16 @@ const Top10KlineChart: React.FC<Props> = ({
       <Typography
         component="div"
         variant="caption"
-        sx={{ mb: 0.4, color: '#6a1b9a', fontWeight: 800, fontSize: '0.72rem', lineHeight: 1.25 }}
+        sx={{
+          mb: 0.4,
+          color: '#6a1b9a',
+          fontWeight: 800,
+          fontSize: '0.72rem',
+          lineHeight: 1.25,
+        }}
       >
-        距上次触碰: {barsSinceTouch == null ? '—' : `${barsSinceTouch} 根`} · 触碰后总涨幅:{' '}
+        距上次触碰: {barsSinceTouch == null ? '—' : `${barsSinceTouch} 根`} ·
+        触碰后总涨幅:{' '}
         {riseSinceTouchPct == null ? '—' : `${riseSinceTouchPct.toFixed(2)}%`} ·
       </Typography>
       <Box sx={{ position: 'relative', width: '100%', height: chartHeight }}>

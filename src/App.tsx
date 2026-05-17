@@ -4,7 +4,8 @@ import { BinanceUsdtWatchlistProvider } from './context/BinanceUsdtWatchlistCont
 import NavButton from './components/NavButton';
 import Analysis from './pages/Analysis';
 import BinanceFutureEventSubscription from './pages/BinanceFutureEventSubscription';
-import Trail from './pages/Trail';
+// Trail hidden for now — pages/Trail.tsx kept for later
+// import Trail from './pages/Trail';
 // import Monitor from './pages/Monitor';
 
 import './App.css';
@@ -13,7 +14,7 @@ export const routes = {
   // Monitor: 'monitor',
   Analysis: 'analysis',
   EventListen: 'event-listen',
-  Trail: 'trail',
+  // Trail: 'trail',
 };
 
 export const Root = () => (
@@ -25,7 +26,6 @@ export const Root = () => (
         path={routes.EventListen}
         element={<BinanceFutureEventSubscription />}
       />
-      <Route path={routes.Trail} element={<Trail />} />
       <Route path="/" element={<Navigate to={routes.Analysis} />} />
     </Routes>
   </>
